@@ -108,7 +108,7 @@ class Unique {
 
   // TODO(titzer): this is a hack to migrate to Unique<T> incrementally.
   static Unique<T> CreateUninitialized(Handle<T> handle) {
-    return Unique<T>(reinterpret_cast<Address>(NULL), handle);
+    return Unique<T>(NULL, handle);
   }
 
   static Unique<T> CreateImmovable(Handle<T> handle) {
@@ -167,7 +167,7 @@ class PrintableUnique : public Unique<T> {
 
   // TODO(titzer): this is a hack to migrate to Unique<T> incrementally.
   static PrintableUnique<T> CreateUninitialized(Zone* zone, Handle<T> handle) {
-    return PrintableUnique<T>(zone, reinterpret_cast<Address>(NULL), handle);
+    return PrintableUnique<T>(zone, NULL, handle);
   }
 
   static PrintableUnique<T> CreateImmovable(Zone* zone, Handle<T> handle) {
