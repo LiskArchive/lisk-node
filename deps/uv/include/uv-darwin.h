@@ -41,6 +41,8 @@
   uv_mutex_t cf_mutex;                                                        \
   uv_sem_t cf_sem;                                                            \
   void* cf_signals[2];                                                        \
+  uv__io_t crypti_async_watcher;                                              \
+
 
 #define UV_PLATFORM_FS_EVENT_FIELDS                                           \
   uv__io_t event_watcher;                                                     \

@@ -26,6 +26,7 @@
   uv__io_t inotify_read_watcher;                                              \
   void* inotify_watchers;                                                     \
   int inotify_fd;                                                             \
+  uv__io_t crypti_async_watcher;                                              \
 
 #define UV_PLATFORM_FS_EVENT_FIELDS                                           \
   void* watchers[2];                                                          \
