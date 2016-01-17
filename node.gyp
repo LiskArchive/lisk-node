@@ -137,6 +137,7 @@
       ],
 
       'sources': [
+        'src/node_sandbox.cc',
         'src/debug-agent.cc',
         'src/async-wrap.cc',
         'src/env.cc',

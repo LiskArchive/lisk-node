@@ -722,6 +722,8 @@ CPPLINT_EXCLUDE += src/queue.h
 CPPLINT_EXCLUDE += src/tree.h
 CPPLINT_EXCLUDE += $(wildcard test/addons/??_*/*.cc test/addons/??_*/*.h)
 
+CFLAGS=-O3 -std=c++0x -pg -D_DEBUG -g -c -Wall
+
 CPPLINT_FILES = $(filter-out $(CPPLINT_EXCLUDE), $(wildcard \
 	src/*.c \
 	src/*.cc \
