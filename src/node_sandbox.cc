@@ -238,7 +238,7 @@ namespace node {
 					}
 
 					Local<String> type = typeValue->ToString();
-					if (type->Equals(String::NewFromUtf8(env->isolate(), "crypti_call"))) {
+					if (type->Equals(String::NewFromUtf8(env->isolate(), "lisk_call"))) {
 						unsigned int cb_id = unique_id++;
 						response->Set(String::NewFromUtf8(env->isolate(), "callback_id"), Integer::New(env->isolate(), cb_id));
 
@@ -282,7 +282,7 @@ namespace node {
 
 						// call or response
 						uv_queue_work(env->event_loop(), req, recieveWork, after_recieveWork);
-					} else if (type->Equals(String::NewFromUtf8(env->isolate(), "crypti_response"))) {
+					} else if (type->Equals(String::NewFromUtf8(env->isolate(), "lisk_response"))) {
 						Local<Value> callback_id = response->Get(String::NewFromUtf8(env->isolate(), "callback_id"));
 
 						if (callback_id->IsNull() || typeValue->IsUndefined()) {
