@@ -1,8 +1,30 @@
+2016-05-06, Version 0.12.14 (Maintenance), @rvagg
+
+Notable changes:
+
+* npm: Correct erroneous version number in v2.15.1 code (Forrest L Norvell) https://github.com/nodejs/node/pull/5988
+* openssl: Upgrade to v1.0.1t, addressing security vulnerabilities (Shigeki Ohtsu) https://github.com/nodejs/node/pull/6553
+  - Fixes CVE-2016-2107 "Padding oracle in AES-NI CBC MAC check"
+  - Fixes CVE-2016-2105 "EVP_EncodeUpdate overflow"
+  - See https://nodejs.org/en/blog/vulnerability/openssl-may-2016/ for full details
+
+Commits:
+
+* [3e99ee1b47] - deps: completely upgrade npm in LTS to 2.15.1 (Forrest L Norvell) https://github.com/nodejs/node/pull/5988
+* [2b63396e1f] - deps: add -no_rand_screen to openssl s_client (Shigeki Ohtsu) https://github.com/joyent/node/pull/25368
+* [f21705df58] - deps: update openssl asm files (Shigeki Ohtsu) https://github.com/nodejs/node/pull/6553
+* [02b6a6bc27] - deps: fix openssl assembly error on ia32 win32 (Fedor Indutny) https://github.com/joyent/node/pull/25654
+* [1aecc668b0] - deps: separate sha256/sha512-x86_64.pl for openssl (Shigeki Ohtsu) https://github.com/joyent/node/pull/25654
+* [39380836a0] - deps: copy all openssl header files to include dir (Shigeki Ohtsu) https://github.com/nodejs/node/pull/6553
+* [08c8ae44a8] - deps: upgrade openssl sources to 1.0.1t (Shigeki Ohtsu) https://github.com/nodejs/node/pull/6553
+* [f5a961ab13] - openssl: fix keypress requirement in apps on win32 (Shigeki Ohtsu) https://github.com/joyent/node/pull/25654
+* [810fb211a7] - tools: remove obsolete npm test-legacy command (Kat Marchán) https://github.com/nodejs/node/pull/5988
+
 2016-03-31, Version 0.12.13 (LTS), @rvagg
 
 Notable changes:
 
-* npm: Upgrade to v2.15.1. (Forrest L Norvell)
+* npm: Upgrade to v2.15.1. Fixes a security flaw in the use of authentication tokens in HTTP requests that would allow an attacker to set up a server that could collect tokens from users of the command-line interface. Authentication tokens have previously been sent with every request made by the CLI for logged-in users, regardless of the destination of the request. This update fixes this by only including those tokens for requests made against the registry or registries used for the current install. (Forrest L Norvell) https://github.com/nodejs/node/pull/5967
 * openssl: OpenSSL v1.0.1s disables the EXPORT and LOW ciphers as they are obsolete and not considered safe. This release of Node.js turns on `OPENSSL_NO_WEAK_SSL_CIPHERS` to fully disable the 27 ciphers included in these lists which can be used in SSLv3 and higher. Full details can be found in our LTS discussion on the matter (https://github.com/nodejs/LTS/issues/85). (Shigeki Ohtsu) https://github.com/nodejs/node/pull/5712
 
 Commits:
