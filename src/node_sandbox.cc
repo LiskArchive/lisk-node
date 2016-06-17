@@ -6,7 +6,6 @@
 #include "v8.h"
 #include "uv.h"
 
-
 #include <unistd.h>
 #include <vector>
 #include <string>
@@ -106,9 +105,9 @@ namespace node {
 			Local<FunctionTemplate> tpl = FunctionTemplate::New(data->isolate, OnMessageResponse);
 			Local<Function> callback =  tpl->GetFunction();
 
-//			intptr_t callback_id = response->Get(String::NewFromUtf8(data->isolate, "callback_id"))->Uint32Value();
+			// intptr_t callback_id = response->Get(String::NewFromUtf8(data->isolate, "callback_id"))->Uint32Value();
 
-//			data->isolate->SetData(0, (void*) reinterpret_cast<void*>(callback_id));
+			// data->isolate->SetData(0, (void*) reinterpret_cast<void*>(callback_id));
 
 			Local<Value> callback_id = Integer::New(data->isolate, response->Get(String::NewFromUtf8(data->isolate, "callback_id"))->Uint32Value());
 
@@ -118,17 +117,17 @@ namespace node {
 				callback_id
 			};
 
-			//v8::TryCatch try_catch;
+			// v8::TryCatch try_catch;
 			callback_fn->Call(data->isolate->GetCurrentContext()->Global(), 3, args);
-			/*if (try_catch.HasCaught()) {
-				node::FatalException(try_catch);
-			}*/
+			// if (try_catch.HasCaught()) {
+			// 	node::FatalException(try_catch);
+			// }
 		}
 
 		void findCallback(uv_work_t *req) {
 			Sandbox_req *data = ((struct Sandbox_req*)req->data);
 
-			// find callback
+			// Find callback
 			unsigned int cb_id = data->callback_id;
 
 			bool found = false;
@@ -140,14 +139,13 @@ namespace node {
 					callData = cbs[i];
 					break;
 				}
-            }
+			}
 
-			if (!found){
-				consoleLog("callback does not found");
+			if (!found) {
+				consoleLog("callback not found");
 				Isolate *isolate = Isolate::GetCurrent();
-             	Environment *env = Environment::GetCurrent(isolate->GetCurrentContext());
-
-             	return ThrowError(env->isolate(), "callback does not found");
+				Environment *env = Environment::GetCurrent(isolate->GetCurrentContext());
+				return ThrowError(env->isolate(), "callback not found");
 			}
 
 			data->callback.Reset(data->isolate, callData.callback);
@@ -163,58 +161,56 @@ namespace node {
 				response->Get(String::NewFromUtf8(data->isolate, "response"))
 			};
 
-			//v8::TryCatch try_catch;
+			// v8::TryCatch try_catch;
 			Local<Function> callback_fn = Local<Function>::New(data->isolate, data->callback);
 
 			callback_fn->Call(data->isolate->GetCurrentContext()->Global(), 2, args);
-			/*if (try_catch.HasCaught()) {
-				node::FatalException(try_catch);
-			}*/
+			// if (try_catch.HasCaught()) {
+			// 	node::FatalException(try_catch);
+			// }
 		}
 
 		void read_stdin(uv_stream_t *stream, ssize_t nread, const uv_buf_t *buf) {
 			if (nread < 0 ) {
 				consoleLog("reset connect");
-    			ASSERT(nread == UV_EOF);
-    			if (buf->base)
-      				free(buf->base);
-    			uv_close((uv_handle_t*)&stdin_pipe, NULL);
-    			uv_close((uv_handle_t*)&stdout_pipe, NULL);
-    			return;
-  			}
-  			if (nread == 0) {
-    			free(buf->base);
-    			return;
-  			}
+				ASSERT(nread == UV_EOF);
+				if (buf->base)
+					free(buf->base);
+				uv_close((uv_handle_t*)&stdin_pipe, NULL);
+				uv_close((uv_handle_t*)&stdout_pipe, NULL);
+				return;
+			}
+			if (nread == 0) {
+				free(buf->base);
+				return;
+			}
 
-			// get json and type
+			// Get json and type
 			string responseStr(buf->base, nread);
 
 			if (buf->base)
-      			free(buf->base);
+				free(buf->base);
 
 			size_t index = 0;
-
 			fullMessage += responseStr;
 
 			if (fullMessage.substr(fullMessage.size() - 11, 11) == "=%5a$ng*a8=") {
 				responseStr = fullMessage;
 				fullMessage = "";
 				while (true) {
-					 /* Locate the substring to replace. */
-					 index = responseStr.find("}{", index);
-					 if (index == string::npos) break;
+					/* Locate the substring to replace */
+					index = responseStr.find("}{", index);
+					if (index == string::npos) break;
 
-					 /* Make the replacement. */
-					 responseStr.replace(index, 2, "}=%5a$ng*a8={");
+					/* Make the replacement */
+					responseStr.replace(index, 2, "}=%5a$ng*a8={");
 
-					 /* Advance index forward so the next iteration doesn't pick it up as well. */
-					 index += 11;
+					/* Advance index forward so the next iteration doesn't pick it up as well */
+					index += 11;
 				}
 
 				std::string sep("=%5a$ng*a8=");
 				std::vector<string> jsonObjects;
-
 				std::string::size_type start = 0;
 				std::string::size_type finish = 0;
 
@@ -262,15 +258,15 @@ namespace node {
 							return ThrowError(env->isolate(), "message argument should be an object");
 						}
 
-//						V8::Initialize();
-//						Isolate *isolate = Isolate::New();
-//						v8::Locker locker(isolate);
-//						HandleScope handlescope(isolate);
-//						isolate->Enter();
-//						Local<Context> context = Context::New(isolate);
-//						Persistent<Context> persistentcontext(isolate, context);
-//						Environment* env = Environment::New(context, uv_default_loop());
-//						Context::Scope scope(context);
+						// V8::Initialize();
+						// Isolate *isolate = Isolate::New();
+						// v8::Locker locker(isolate);
+						// HandleScope handlescope(isolate);
+						// isolate->Enter();
+						// Local<Context> context = Context::New(isolate);
+						// Persistent<Context> persistentcontext(isolate, context);
+						// Environment* env = Environment::New(context, uv_default_loop());
+						// Context::Scope scope(context);
 
 						Sandbox_req* request = new Sandbox_req;
 						request->data = jsonObjects[i];
@@ -280,7 +276,7 @@ namespace node {
 						uv_work_t *req = new uv_work_t;
 						req->data = request;
 
-						// call or response
+						// Call or response
 						uv_queue_work(env->event_loop(), req, recieveWork, after_recieveWork);
 					} else if (type->Equals(String::NewFromUtf8(env->isolate(), "lisk_response"))) {
 						Local<Value> callback_id = response->Get(String::NewFromUtf8(env->isolate(), "callback_id"));
@@ -316,10 +312,10 @@ namespace node {
 							}
 						}
 
-						// process response
+						// Process response
 						Sandbox_req* request = new Sandbox_req;
 						request->data = jsonObjects[i];
-						//request->data = jsonObjects[i].c_str();
+						// request->data = jsonObjects[i].c_str();
 						request->isolate = env->isolate();
 						request->callback_id = callback_id->ToNumber()->Value();
 
@@ -328,12 +324,12 @@ namespace node {
 
 						Sandbox_req *data = ((struct Sandbox_req*)req->data);
 
-						// find callback and call
+						// Find callback and call
 						uv_queue_work(env->event_loop(), req, findCallback, after_findCallback);
 					} else {
 						return ThrowError(env->isolate(), "unknown call type argument");
 					}
-//					isolate->Exit();
+					// isolate->Exit();
 				}
 			}
 		}
@@ -384,9 +380,9 @@ namespace node {
 
 			response->Set(String::NewFromUtf8(env->isolate(), "type"), String::NewFromUtf8(env->isolate(), "dapp_response"));
 
-			// get id and find callback
-//			void* raw = env->isolate()->GetData(0);
-//			Local<Value> callback_id = Integer::NewFromUnsigned(env->isolate(), (uint32_t) reinterpret_cast<intptr_t>(raw));
+			// Get id and find callback
+			// void* raw = env->isolate()->GetData(0);
+			// Local<Value> callback_id = Integer::NewFromUnsigned(env->isolate(), (uint32_t) reinterpret_cast<intptr_t>(raw));
 
 			Local<Value> callback_id = Local<Value>::Cast(args[2]);
 
@@ -416,9 +412,9 @@ namespace node {
 		Handle<Object> jsonParse(Isolate* isolate, Handle<String> input) {
 			Local<Object> global = isolate->GetCurrentContext()->Global();
 
-			/*Local<Function> decodeURIComponent = Handle<Function>::Cast(global->Get(String::NewFromUtf8(isolate, "decodeURIComponent")));
-			Local<Value> decodeURIComponent_args[] = {input};
-			Local<String> decoded = decodeURIComponent->Call(global, 1, decodeURIComponent_args)->ToString();*/
+			// Local<Function> decodeURIComponent = Handle<Function>::Cast(global->Get(String::NewFromUtf8(isolate, "decodeURIComponent")));
+			// Local<Value> decodeURIComponent_args[] = {input};
+			// Local<String> decoded = decodeURIComponent->Call(global, 1, decodeURIComponent_args)->ToString();
 
 			Local<Object> JSON = global->Get(String::NewFromUtf8(isolate, "JSON"))->ToObject();
 			Local<Function> JSON_parse = Handle<Function>::Cast(JSON->Get(String::NewFromUtf8(isolate, "parse")));
@@ -427,11 +423,11 @@ namespace node {
 
 			Handle<Object> result;
 
-			//v8::TryCatch try_catch;
+			// v8::TryCatch try_catch;
 			result = Handle<Object>::Cast(JSON_parse->Call(JSON, 1, parse_args)->ToObject());
-			/*if (try_catch.HasCaught()) {
-				node::FatalException(try_catch);
-			}*/
+			// if (try_catch.HasCaught()) {
+			// 	node::FatalException(try_catch);
+			// }
 
 			return result;
 		}
