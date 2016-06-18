@@ -499,7 +499,7 @@ namespace node {
 				return ThrowError(env->isolate(), "argument should be a callback");
 			}
 
-		   pfn.Reset(env->isolate(), args[0].As<Function>());
+			pfn.Reset(env->isolate(), args[0].As<Function>());
 		}
 
 		void Initialize(Handle<Object> target, Handle<Value> unused, Handle<Context> context) {
