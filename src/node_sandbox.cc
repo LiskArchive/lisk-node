@@ -119,9 +119,6 @@ namespace node {
 		void findCallback(uv_work_t *req) {
 			Sandbox_req *data = ((struct Sandbox_req*)req->data);
 
-			// Find callback
-			unsigned int cb_id = data->callback_id;
-
 			bool found = false;
 			Sandbox_req callData;
 
@@ -297,8 +294,6 @@ namespace node {
 
 						uv_work_t *req = new uv_work_t;
 						req->data = request;
-
-						Sandbox_req *data = ((struct Sandbox_req*)req->data);
 
 						// Find callback and call
 						uv_queue_work(env->event_loop(), req, findCallback, after_findCallback);
