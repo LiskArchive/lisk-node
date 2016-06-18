@@ -105,10 +105,6 @@ namespace node {
 			Local<FunctionTemplate> tpl = FunctionTemplate::New(data->isolate, OnMessageResponse);
 			Local<Function> callback =  tpl->GetFunction();
 
-			// intptr_t callback_id = response->Get(String::NewFromUtf8(data->isolate, "callback_id"))->Uint32Value();
-
-			// data->isolate->SetData(0, (void*) reinterpret_cast<void*>(callback_id));
-
 			Local<Value> callback_id = Integer::New(data->isolate, response->Get(String::NewFromUtf8(data->isolate, "callback_id"))->Uint32Value());
 
 			Local<Value> args[] = {
@@ -117,11 +113,7 @@ namespace node {
 				callback_id
 			};
 
-			// v8::TryCatch try_catch;
 			callback_fn->Call(data->isolate->GetCurrentContext()->Global(), 3, args);
-			// if (try_catch.HasCaught()) {
-			// 	node::FatalException(try_catch);
-			// }
 		}
 
 		void findCallback(uv_work_t *req) {
@@ -161,13 +153,8 @@ namespace node {
 				response->Get(String::NewFromUtf8(data->isolate, "response"))
 			};
 
-			// v8::TryCatch try_catch;
 			Local<Function> callback_fn = Local<Function>::New(data->isolate, data->callback);
-
 			callback_fn->Call(data->isolate->GetCurrentContext()->Global(), 2, args);
-			// if (try_catch.HasCaught()) {
-			// 	node::FatalException(try_catch);
-			// }
 		}
 
 		void read_stdin(uv_stream_t *stream, ssize_t nread, const uv_buf_t *buf) {
@@ -258,16 +245,6 @@ namespace node {
 							return ThrowError(env->isolate(), "message argument should be an object");
 						}
 
-						// V8::Initialize();
-						// Isolate *isolate = Isolate::New();
-						// v8::Locker locker(isolate);
-						// HandleScope handlescope(isolate);
-						// isolate->Enter();
-						// Local<Context> context = Context::New(isolate);
-						// Persistent<Context> persistentcontext(isolate, context);
-						// Environment* env = Environment::New(context, uv_default_loop());
-						// Context::Scope scope(context);
-
 						Sandbox_req* request = new Sandbox_req;
 						request->data = jsonObjects[i];
 						request->isolate = env->isolate();
@@ -315,7 +292,6 @@ namespace node {
 						// Process response
 						Sandbox_req* request = new Sandbox_req;
 						request->data = jsonObjects[i];
-						// request->data = jsonObjects[i].c_str();
 						request->isolate = env->isolate();
 						request->callback_id = callback_id->ToNumber()->Value();
 
@@ -329,7 +305,6 @@ namespace node {
 					} else {
 						return ThrowError(env->isolate(), "unknown call type argument");
 					}
-					// isolate->Exit();
 				}
 			}
 		}
@@ -380,10 +355,6 @@ namespace node {
 
 			response->Set(String::NewFromUtf8(env->isolate(), "type"), String::NewFromUtf8(env->isolate(), "dapp_response"));
 
-			// Get id and find callback
-			// void* raw = env->isolate()->GetData(0);
-			// Local<Value> callback_id = Integer::NewFromUnsigned(env->isolate(), (uint32_t) reinterpret_cast<intptr_t>(raw));
-
 			Local<Value> callback_id = Local<Value>::Cast(args[2]);
 
 			if (callback_id->IsNull()) {
@@ -407,14 +378,8 @@ namespace node {
 			uv_queue_work(env->event_loop(), req, sendWork, after_sendWork);
 		}
 
-		//////////
-
 		Handle<Object> jsonParse(Isolate* isolate, Handle<String> input) {
 			Local<Object> global = isolate->GetCurrentContext()->Global();
-
-			// Local<Function> decodeURIComponent = Handle<Function>::Cast(global->Get(String::NewFromUtf8(isolate, "decodeURIComponent")));
-			// Local<Value> decodeURIComponent_args[] = {input};
-			// Local<String> decoded = decodeURIComponent->Call(global, 1, decodeURIComponent_args)->ToString();
 
 			Local<Object> JSON = global->Get(String::NewFromUtf8(isolate, "JSON"))->ToObject();
 			Local<Function> JSON_parse = Handle<Function>::Cast(JSON->Get(String::NewFromUtf8(isolate, "parse")));
@@ -423,11 +388,7 @@ namespace node {
 
 			Handle<Object> result;
 
-			// v8::TryCatch try_catch;
 			result = Handle<Object>::Cast(JSON_parse->Call(JSON, 1, parse_args)->ToObject());
-			// if (try_catch.HasCaught()) {
-			// 	node::FatalException(try_catch);
-			// }
 
 			return result;
 		}
@@ -508,7 +469,6 @@ namespace node {
 			NODE_SET_METHOD(target, "sendMessage", SendMessage);
 			NODE_SET_METHOD(target, "onMessage", OnMessage);
 
-			// Start Listen
 			StartListen(env);
 		}
 	}  // namespace Sandbox
