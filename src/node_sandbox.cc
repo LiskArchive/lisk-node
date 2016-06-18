@@ -230,7 +230,7 @@ namespace node {
 					Local<Value> typeValue = response->Get(String::NewFromUtf8(env->isolate(), "type"));
 
 					if (typeValue->IsNull() || typeValue->IsUndefined()) {
-						return ThrowError(env->isolate(), "needs type argument");
+						return ThrowError(env->isolate(), "missing type argument");
 					}
 
 					Local<String> type = typeValue->ToString();
@@ -241,7 +241,7 @@ namespace node {
 						Local<Value> callback_id = response->Get(String::NewFromUtf8(env->isolate(), "callback_id"));
 
 						if (callback_id->IsNull() || typeValue->IsUndefined()) {
-							return ThrowError(env->isolate(), "needs callback_id argument");
+							return ThrowError(env->isolate(), "missing callback_id argument");
 						}
 
 						if (!callback_id->IsNumber()) {
@@ -251,7 +251,7 @@ namespace node {
 						Local<Value> messageObj = response->Get(String::NewFromUtf8(env->isolate(), "message"));
 
 						if (messageObj->IsNull() || messageObj->IsUndefined()) {
-							return ThrowError(env->isolate(), "needs message argument");
+							return ThrowError(env->isolate(), "missing message argument");
 						}
 
 						if (!messageObj->IsObject()) {
@@ -282,7 +282,7 @@ namespace node {
 						Local<Value> callback_id = response->Get(String::NewFromUtf8(env->isolate(), "callback_id"));
 
 						if (callback_id->IsNull() || typeValue->IsUndefined()) {
-							return ThrowError(env->isolate(), "needs callback_id argument");
+							return ThrowError(env->isolate(), "missing callback_id argument");
 						}
 
 						if (!callback_id->IsNumber()) {
@@ -292,7 +292,7 @@ namespace node {
 						Local<Value> responseObj = response->Get(String::NewFromUtf8(env->isolate(), "response"));
 
 						if (responseObj->IsNull() || responseObj->IsUndefined()) {
-							return ThrowError(env->isolate(), "needs response argument");
+							return ThrowError(env->isolate(), "missing response argument");
 						}
 
 						if (!responseObj->IsObject()) {
@@ -308,7 +308,7 @@ namespace node {
 
 						if (!errorObj->IsNull() && !errorObj->IsUndefined()) {
 							if (!errorObj->IsString()) {
-								return ThrowError(env->isolate(), "response argument should be an string");
+								return ThrowError(env->isolate(), "response argument should be a string");
 							}
 						}
 
@@ -354,7 +354,7 @@ namespace node {
 			HandleScope scope(env->isolate());
 
 			if (args.Length() < 1) {
-				return ThrowError(env->isolate(), "needs argument error");
+				return ThrowError(env->isolate(), "missing argument, expected at least one");
 			}
 
 			Local<Object> response = Object::New(env->isolate());
@@ -363,14 +363,14 @@ namespace node {
 				Local<String> error = Handle<String>::Cast(args[0]);
 				response->Set(String::NewFromUtf8(env->isolate(), "error"), error);
 			} else if (!args[0]->IsNull()) {
-				return ThrowError(env->isolate(), "error argument should be a string or null");
+				return ThrowError(env->isolate(), "first argument should be a string or null");
 			} else if (args[0]->IsNull()) {
 				if (args.Length() < 2) {
-					return ThrowError(env->isolate(), "needs argument error and second agrument response");
+					return ThrowError(env->isolate(), "missing arguments, expected at least two");
 				}
 
 				if (!args[1]->IsObject()) {
-					return ThrowError(env->isolate(), "error argument should be a object");
+					return ThrowError(env->isolate(), "second argument should be an object");
 				}
 
 				Local<Object> message = Local<Object>::Cast(args[1]);
@@ -459,7 +459,7 @@ namespace node {
 			HandleScope scope(env->isolate());
 
 			if (args.Length() < 2)
-				return ThrowError(env->isolate(), "needs argument object and callback");
+				return ThrowError(env->isolate(), "missing arguments, expected at least two");
 
 			if (!args[1]->IsFunction()) {
 				return ThrowError(env->isolate(), "second argument should be a callback");
@@ -469,7 +469,7 @@ namespace node {
 				Local<Object> messageCall = Local<Object>::Cast(args[0]);
 
 				if (!messageCall->IsObject()) {
-					return ThrowError(env->isolate(), "message argument should be an object");
+					return ThrowError(env->isolate(), "first argument should be an object");
 				}
 
 				Local<Object> messageResponse = Object::New(env->isolate());
@@ -483,7 +483,7 @@ namespace node {
 
 				SendMessage(env, (char*)buffer, strlen((char*)buffer), cb_id, Handle<Function>::Cast(args[1]));
 			} else {
-				return ThrowError(env->isolate(), "first argument should be a message object");
+				return ThrowError(env->isolate(), "first argument should be an object");
 			}
 		}
 
@@ -492,11 +492,11 @@ namespace node {
 			HandleScope scope(env->isolate());
 
 			if (args.Length() < 1) {
-				return ThrowError(env->isolate(), "needs argument object and callback");
+				return ThrowError(env->isolate(), "missing argument, expected at least one");
 			}
 
 			if (!args[0]->IsFunction()) {
-				return ThrowError(env->isolate(), "argument should be a callback");
+				return ThrowError(env->isolate(), "first argument should be a callback");
 			}
 
 			pfn.Reset(env->isolate(), args[0].As<Function>());
