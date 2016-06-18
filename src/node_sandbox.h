@@ -24,7 +24,6 @@
 
 #include "node.h"
 #include "v8.h"
-
 #include "env.h"
 
 namespace node {
@@ -33,8 +32,7 @@ namespace Async {
 using v8::Function;
 using v8::Handle;
 
-NODE_EXTERN void PostMessage(Environment* env, const char *data, size_t data_length,
-                        Handle<Function> callback);
+NODE_EXTERN void PostMessage(Environment* env, const char *data, size_t data_length, Handle<Function> callback);
 
 }  // namespace Async
 }  // namespace node
