@@ -99,6 +99,7 @@ namespace node {
 
 		void after_recieveWork(uv_work_t *req, int status) {
 			Sandbox_req *data = ((struct Sandbox_req*)req->data);
+			HandleScope scope(data->isolate);
 			Local<Function> callback_fn = Local<Function>::New(data->isolate, pfn);
 			Handle<String> response_str = String::NewFromUtf8(data->isolate, data->data.c_str(), String::kNormalString, data->data.size());
 			Handle<Object> response = jsonParse(data->isolate, response_str);
@@ -133,6 +134,7 @@ namespace node {
 			if (!found) {
 				consoleLog("callback not found");
 				Isolate *isolate = Isolate::GetCurrent();
+				HandleScope scope(isolate);
 				Environment *env = Environment::GetCurrent(isolate->GetCurrentContext());
 				return ThrowError(env->isolate(), "callback not found");
 			}
@@ -142,6 +144,7 @@ namespace node {
 
 		void after_findCallback(uv_work_t *req, int status) {
 			Sandbox_req *data = ((struct Sandbox_req*)req->data);
+			HandleScope scope(data->isolate);
 			Handle<String> response_str = String::NewFromUtf8(data->isolate, data->data.c_str(), String::kNormalString, data->data.size());
 			Handle<Object> response = jsonParse(data->isolate, response_str);
 
@@ -206,6 +209,7 @@ namespace node {
 				} while (finish != string::npos);
 
 				Isolate *isolate = Isolate::GetCurrent();
+				HandleScope scope(isolate);
 				Environment *env = Environment::GetCurrent(isolate->GetCurrentContext());
 
 				for (vector<int>::size_type i = 0; i != jsonObjects.size() - 1; i++) {
