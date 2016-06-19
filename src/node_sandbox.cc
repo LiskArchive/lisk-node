@@ -60,8 +60,8 @@ namespace node {
 		Handle<Object> jsonParse(Isolate* isolate, Handle<String> input);
 		uint8_t* jsonStringify(Isolate* isolate, Handle<Object> input);
 
-		void consoleLog(const char* output, ssize_t lenght) {
-			write(1, output, lenght);
+		void consoleLog(const char* output, ssize_t length) {
+			write(1, output, length);
 		}
 
 		void consoleLog(string output) {
