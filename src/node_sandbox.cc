@@ -6,7 +6,6 @@
 #include "v8.h"
 #include "uv.h"
 
-
 #include <unistd.h>
 #include <vector>
 #include <string>
@@ -61,8 +60,8 @@ namespace node {
 		Handle<Object> jsonParse(Isolate* isolate, Handle<String> input);
 		uint8_t* jsonStringify(Isolate* isolate, Handle<Object> input);
 
-		void consoleLog(const char* output, ssize_t lenght) {
-			write(1, output, lenght);
+		void consoleLog(const char* output, ssize_t length) {
+			write(1, output, length);
 		}
 
 		void consoleLog(string output) {
@@ -100,15 +99,12 @@ namespace node {
 
 		void after_recieveWork(uv_work_t *req, int status) {
 			Sandbox_req *data = ((struct Sandbox_req*)req->data);
+			HandleScope scope(data->isolate);
 			Local<Function> callback_fn = Local<Function>::New(data->isolate, pfn);
 			Handle<String> response_str = String::NewFromUtf8(data->isolate, data->data.c_str(), String::kNormalString, data->data.size());
 			Handle<Object> response = jsonParse(data->isolate, response_str);
 			Local<FunctionTemplate> tpl = FunctionTemplate::New(data->isolate, OnMessageResponse);
 			Local<Function> callback =  tpl->GetFunction();
-
-//			intptr_t callback_id = response->Get(String::NewFromUtf8(data->isolate, "callback_id"))->Uint32Value();
-
-//			data->isolate->SetData(0, (void*) reinterpret_cast<void*>(callback_id));
 
 			Local<Value> callback_id = Integer::New(data->isolate, response->Get(String::NewFromUtf8(data->isolate, "callback_id"))->Uint32Value());
 
@@ -118,18 +114,11 @@ namespace node {
 				callback_id
 			};
 
-			//v8::TryCatch try_catch;
 			callback_fn->Call(data->isolate->GetCurrentContext()->Global(), 3, args);
-			/*if (try_catch.HasCaught()) {
-				node::FatalException(try_catch);
-			}*/
 		}
 
 		void findCallback(uv_work_t *req) {
 			Sandbox_req *data = ((struct Sandbox_req*)req->data);
-
-			// find callback
-			unsigned int cb_id = data->callback_id;
 
 			bool found = false;
 			Sandbox_req callData;
@@ -140,14 +129,14 @@ namespace node {
 					callData = cbs[i];
 					break;
 				}
-            }
+			}
 
-			if (!found){
-				consoleLog("callback does not found");
+			if (!found) {
+				consoleLog("callback not found");
 				Isolate *isolate = Isolate::GetCurrent();
-             	Environment *env = Environment::GetCurrent(isolate->GetCurrentContext());
-
-             	return ThrowError(env->isolate(), "callback does not found");
+				HandleScope scope(isolate);
+				Environment *env = Environment::GetCurrent(isolate->GetCurrentContext());
+				return ThrowError(env->isolate(), "callback not found");
 			}
 
 			data->callback.Reset(data->isolate, callData.callback);
@@ -155,6 +144,7 @@ namespace node {
 
 		void after_findCallback(uv_work_t *req, int status) {
 			Sandbox_req *data = ((struct Sandbox_req*)req->data);
+			HandleScope scope(data->isolate);
 			Handle<String> response_str = String::NewFromUtf8(data->isolate, data->data.c_str(), String::kNormalString, data->data.size());
 			Handle<Object> response = jsonParse(data->isolate, response_str);
 
@@ -163,58 +153,51 @@ namespace node {
 				response->Get(String::NewFromUtf8(data->isolate, "response"))
 			};
 
-			//v8::TryCatch try_catch;
 			Local<Function> callback_fn = Local<Function>::New(data->isolate, data->callback);
-
 			callback_fn->Call(data->isolate->GetCurrentContext()->Global(), 2, args);
-			/*if (try_catch.HasCaught()) {
-				node::FatalException(try_catch);
-			}*/
 		}
 
 		void read_stdin(uv_stream_t *stream, ssize_t nread, const uv_buf_t *buf) {
 			if (nread < 0 ) {
 				consoleLog("reset connect");
-    			ASSERT(nread == UV_EOF);
-    			if (buf->base)
-      				free(buf->base);
-    			uv_close((uv_handle_t*)&stdin_pipe, NULL);
-    			uv_close((uv_handle_t*)&stdout_pipe, NULL);
-    			return;
-  			}
-  			if (nread == 0) {
-    			free(buf->base);
-    			return;
-  			}
+				ASSERT(nread == UV_EOF);
+				if (buf->base)
+					free(buf->base);
+				uv_close((uv_handle_t*)&stdin_pipe, NULL);
+				uv_close((uv_handle_t*)&stdout_pipe, NULL);
+				return;
+			}
+			if (nread == 0) {
+				free(buf->base);
+				return;
+			}
 
-			// get json and type
+			// Get json and type
 			string responseStr(buf->base, nread);
 
 			if (buf->base)
-      			free(buf->base);
+				free(buf->base);
 
 			size_t index = 0;
-
 			fullMessage += responseStr;
 
 			if (fullMessage.substr(fullMessage.size() - 11, 11) == "=%5a$ng*a8=") {
 				responseStr = fullMessage;
 				fullMessage = "";
 				while (true) {
-					 /* Locate the substring to replace. */
-					 index = responseStr.find("}{", index);
-					 if (index == string::npos) break;
+					/* Locate the substring to replace */
+					index = responseStr.find("}{", index);
+					if (index == string::npos) break;
 
-					 /* Make the replacement. */
-					 responseStr.replace(index, 2, "}=%5a$ng*a8={");
+					/* Make the replacement */
+					responseStr.replace(index, 2, "}=%5a$ng*a8={");
 
-					 /* Advance index forward so the next iteration doesn't pick it up as well. */
-					 index += 11;
+					/* Advance index forward so the next iteration doesn't pick it up as well */
+					index += 11;
 				}
 
 				std::string sep("=%5a$ng*a8=");
 				std::vector<string> jsonObjects;
-
 				std::string::size_type start = 0;
 				std::string::size_type finish = 0;
 
@@ -226,6 +209,7 @@ namespace node {
 				} while (finish != string::npos);
 
 				Isolate *isolate = Isolate::GetCurrent();
+				HandleScope scope(isolate);
 				Environment *env = Environment::GetCurrent(isolate->GetCurrentContext());
 
 				for (vector<int>::size_type i = 0; i != jsonObjects.size() - 1; i++) {
@@ -234,7 +218,7 @@ namespace node {
 					Local<Value> typeValue = response->Get(String::NewFromUtf8(env->isolate(), "type"));
 
 					if (typeValue->IsNull() || typeValue->IsUndefined()) {
-						return ThrowError(env->isolate(), "needs type argument");
+						return ThrowError(env->isolate(), "missing type argument");
 					}
 
 					Local<String> type = typeValue->ToString();
@@ -245,7 +229,7 @@ namespace node {
 						Local<Value> callback_id = response->Get(String::NewFromUtf8(env->isolate(), "callback_id"));
 
 						if (callback_id->IsNull() || typeValue->IsUndefined()) {
-							return ThrowError(env->isolate(), "needs callback_id argument");
+							return ThrowError(env->isolate(), "missing callback_id argument");
 						}
 
 						if (!callback_id->IsNumber()) {
@@ -255,22 +239,12 @@ namespace node {
 						Local<Value> messageObj = response->Get(String::NewFromUtf8(env->isolate(), "message"));
 
 						if (messageObj->IsNull() || messageObj->IsUndefined()) {
-							return ThrowError(env->isolate(), "needs message argument");
+							return ThrowError(env->isolate(), "missing message argument");
 						}
 
 						if (!messageObj->IsObject()) {
 							return ThrowError(env->isolate(), "message argument should be an object");
 						}
-
-//						V8::Initialize();
-//						Isolate *isolate = Isolate::New();
-//						v8::Locker locker(isolate);
-//						HandleScope handlescope(isolate);
-//						isolate->Enter();
-//						Local<Context> context = Context::New(isolate);
-//						Persistent<Context> persistentcontext(isolate, context);
-//						Environment* env = Environment::New(context, uv_default_loop());
-//						Context::Scope scope(context);
 
 						Sandbox_req* request = new Sandbox_req;
 						request->data = jsonObjects[i];
@@ -280,13 +254,13 @@ namespace node {
 						uv_work_t *req = new uv_work_t;
 						req->data = request;
 
-						// call or response
+						// Call or response
 						uv_queue_work(env->event_loop(), req, recieveWork, after_recieveWork);
 					} else if (type->Equals(String::NewFromUtf8(env->isolate(), "lisk_response"))) {
 						Local<Value> callback_id = response->Get(String::NewFromUtf8(env->isolate(), "callback_id"));
 
 						if (callback_id->IsNull() || typeValue->IsUndefined()) {
-							return ThrowError(env->isolate(), "needs callback_id argument");
+							return ThrowError(env->isolate(), "missing callback_id argument");
 						}
 
 						if (!callback_id->IsNumber()) {
@@ -296,7 +270,7 @@ namespace node {
 						Local<Value> responseObj = response->Get(String::NewFromUtf8(env->isolate(), "response"));
 
 						if (responseObj->IsNull() || responseObj->IsUndefined()) {
-							return ThrowError(env->isolate(), "needs response argument");
+							return ThrowError(env->isolate(), "missing response argument");
 						}
 
 						if (!responseObj->IsObject()) {
@@ -312,37 +286,33 @@ namespace node {
 
 						if (!errorObj->IsNull() && !errorObj->IsUndefined()) {
 							if (!errorObj->IsString()) {
-								return ThrowError(env->isolate(), "response argument should be an string");
+								return ThrowError(env->isolate(), "response argument should be a string");
 							}
 						}
 
-						// process response
+						// Process response
 						Sandbox_req* request = new Sandbox_req;
 						request->data = jsonObjects[i];
-						//request->data = jsonObjects[i].c_str();
 						request->isolate = env->isolate();
 						request->callback_id = callback_id->ToNumber()->Value();
 
 						uv_work_t *req = new uv_work_t;
 						req->data = request;
 
-						Sandbox_req *data = ((struct Sandbox_req*)req->data);
-
-						// find callback and call
+						// Find callback and call
 						uv_queue_work(env->event_loop(), req, findCallback, after_findCallback);
 					} else {
 						return ThrowError(env->isolate(), "unknown call type argument");
 					}
-//					isolate->Exit();
 				}
 			}
 		}
 
 		void StartListen(Environment *env) {
-		   uv_pipe_init(env->event_loop(), &stdin_pipe, 1);
-		   uv_pipe_open(&stdin_pipe, 3);
+			uv_pipe_init(env->event_loop(), &stdin_pipe, 1);
+			uv_pipe_open(&stdin_pipe, 3);
 
-		   uv_read_start((uv_stream_t*)&stdin_pipe, alloc_buffer, read_stdin);
+			uv_read_start((uv_stream_t*)&stdin_pipe, alloc_buffer, read_stdin);
 		}
 
 		void sendWork(uv_work_t *req) {
@@ -358,7 +328,7 @@ namespace node {
 			HandleScope scope(env->isolate());
 
 			if (args.Length() < 1) {
-				return ThrowError(env->isolate(), "needs argument error");
+				return ThrowError(env->isolate(), "missing argument, expected at least one");
 			}
 
 			Local<Object> response = Object::New(env->isolate());
@@ -367,14 +337,14 @@ namespace node {
 				Local<String> error = Handle<String>::Cast(args[0]);
 				response->Set(String::NewFromUtf8(env->isolate(), "error"), error);
 			} else if (!args[0]->IsNull()) {
-				return ThrowError(env->isolate(), "error argument should be a string or null");
+				return ThrowError(env->isolate(), "first argument should be a string or null");
 			} else if (args[0]->IsNull()) {
 				if (args.Length() < 2) {
-					return ThrowError(env->isolate(), "needs argument error and second agrument response");
+					return ThrowError(env->isolate(), "missing arguments, expected at least two");
 				}
 
 				if (!args[1]->IsObject()) {
-					return ThrowError(env->isolate(), "error argument should be a object");
+					return ThrowError(env->isolate(), "second argument should be an object");
 				}
 
 				Local<Object> message = Local<Object>::Cast(args[1]);
@@ -383,10 +353,6 @@ namespace node {
 			}
 
 			response->Set(String::NewFromUtf8(env->isolate(), "type"), String::NewFromUtf8(env->isolate(), "dapp_response"));
-
-			// get id and find callback
-//			void* raw = env->isolate()->GetData(0);
-//			Local<Value> callback_id = Integer::NewFromUnsigned(env->isolate(), (uint32_t) reinterpret_cast<intptr_t>(raw));
 
 			Local<Value> callback_id = Local<Value>::Cast(args[2]);
 
@@ -411,14 +377,8 @@ namespace node {
 			uv_queue_work(env->event_loop(), req, sendWork, after_sendWork);
 		}
 
-		//////////
-
 		Handle<Object> jsonParse(Isolate* isolate, Handle<String> input) {
 			Local<Object> global = isolate->GetCurrentContext()->Global();
-
-			/*Local<Function> decodeURIComponent = Handle<Function>::Cast(global->Get(String::NewFromUtf8(isolate, "decodeURIComponent")));
-			Local<Value> decodeURIComponent_args[] = {input};
-			Local<String> decoded = decodeURIComponent->Call(global, 1, decodeURIComponent_args)->ToString();*/
 
 			Local<Object> JSON = global->Get(String::NewFromUtf8(isolate, "JSON"))->ToObject();
 			Local<Function> JSON_parse = Handle<Function>::Cast(JSON->Get(String::NewFromUtf8(isolate, "parse")));
@@ -427,11 +387,7 @@ namespace node {
 
 			Handle<Object> result;
 
-			//v8::TryCatch try_catch;
 			result = Handle<Object>::Cast(JSON_parse->Call(JSON, 1, parse_args)->ToObject());
-			/*if (try_catch.HasCaught()) {
-				node::FatalException(try_catch);
-			}*/
 
 			return result;
 		}
@@ -463,7 +419,7 @@ namespace node {
 			HandleScope scope(env->isolate());
 
 			if (args.Length() < 2)
-				return ThrowError(env->isolate(), "needs argument object and callback");
+				return ThrowError(env->isolate(), "missing arguments, expected at least two");
 
 			if (!args[1]->IsFunction()) {
 				return ThrowError(env->isolate(), "second argument should be a callback");
@@ -473,7 +429,7 @@ namespace node {
 				Local<Object> messageCall = Local<Object>::Cast(args[0]);
 
 				if (!messageCall->IsObject()) {
-					return ThrowError(env->isolate(), "message argument should be an object");
+					return ThrowError(env->isolate(), "first argument should be an object");
 				}
 
 				Local<Object> messageResponse = Object::New(env->isolate());
@@ -487,7 +443,7 @@ namespace node {
 
 				SendMessage(env, (char*)buffer, strlen((char*)buffer), cb_id, Handle<Function>::Cast(args[1]));
 			} else {
-				return ThrowError(env->isolate(), "first argument should be a message object");
+				return ThrowError(env->isolate(), "first argument should be an object");
 			}
 		}
 
@@ -496,14 +452,14 @@ namespace node {
 			HandleScope scope(env->isolate());
 
 			if (args.Length() < 1) {
-				return ThrowError(env->isolate(), "needs argument object and callback");
+				return ThrowError(env->isolate(), "missing argument, expected at least one");
 			}
 
 			if (!args[0]->IsFunction()) {
-				return ThrowError(env->isolate(), "argument should be a callback");
+				return ThrowError(env->isolate(), "first argument should be a callback");
 			}
 
-		   pfn.Reset(env->isolate(), args[0].As<Function>());
+			pfn.Reset(env->isolate(), args[0].As<Function>());
 		}
 
 		void Initialize(Handle<Object> target, Handle<Value> unused, Handle<Context> context) {
@@ -512,7 +468,6 @@ namespace node {
 			NODE_SET_METHOD(target, "sendMessage", SendMessage);
 			NODE_SET_METHOD(target, "onMessage", OnMessage);
 
-			// Start Listen
 			StartListen(env);
 		}
 	}  // namespace Sandbox
