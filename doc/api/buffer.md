@@ -282,7 +282,7 @@ const buf = Buffer.from([1, 2, 3]);
 //   1
 //   2
 //   3
-for (var b of buf) {
+for (const b of buf) {
   console.log(b);
 }
 ```
@@ -404,14 +404,14 @@ are unknown and *could contain sensitive data*. Use
 Example:
 
 ```js
-const buf = new Buffer(5);
+const buf = new Buffer(10);
 
-// Prints: (contents may vary): <Buffer 78 e0 82 02 01>
+// Prints: (contents may vary): <Buffer 48 21 4b 00 00 00 00 00 30 dd>
 console.log(buf);
 
 buf.fill(0);
 
-// Prints: <Buffer 00 00 00 00 00>
+// Prints: <Buffer 00 00 00 00 00 00 00 00 00 00>
 console.log(buf);
 ```
 
@@ -523,14 +523,14 @@ initialized*. The contents of the newly created `Buffer` are unknown and
 Example:
 
 ```js
-const buf = Buffer.allocUnsafe(5);
+const buf = Buffer.allocUnsafe(10);
 
-// Prints: (contents may vary): <Buffer 78 e0 82 02 01>
+// Prints: (contents may vary): <Buffer a0 8b 28 3f 01 00 00 00 50 32>
 console.log(buf);
 
 buf.fill(0);
 
-// Prints: <Buffer 00 00 00 00 00>
+// Prints: <Buffer 00 00 00 00 00 00 00 00 00 00>
 console.log(buf);
 ```
 
@@ -617,6 +617,10 @@ added: v0.1.90
 Returns the actual byte length of a string. This is not the same as
 [`String.prototype.length`] since that returns the number of *characters* in
 a string.
+
+*Note* that for `'base64'` and `'hex'`, this function assumes valid input. For
+strings that contain non-Base64/Hex-encoded data (e.g. whitespace), the return
+value might be greater than the length of a `Buffer` created from the string.
 
 Example:
 
@@ -961,7 +965,7 @@ A `RangeError` will be thrown if: `targetStart < 0`, `sourceStart < 0`,
 added: v0.1.90
 -->
 
-* `target` {Buffer} A `Buffer` to copy into.
+* `target` {Buffer|Uint8Array} A `Buffer` or [`Uint8Array`] to copy into.
 * `targetStart` {Integer} The offset within `target` at which to begin
   copying to. **Default:** `0`
 * `sourceStart` {Integer} The offset within `buf` at which to begin copying from.
@@ -997,7 +1001,7 @@ overlapping region within the same `Buffer`
 ```js
 const buf = Buffer.allocUnsafe(26);
 
-for (var i = 0 ; i < 26 ; i++) {
+for (let i = 0 ; i < 26 ; i++) {
   // 97 is the decimal ASCII value for 'a'
   buf[i] = i + 97;
 }
@@ -1030,7 +1034,7 @@ const buf = Buffer.from('buffer');
 //   [3, 102]
 //   [4, 101]
 //   [5, 114]
-for (var pair of buf.entries()) {
+for (const pair of buf.entries()) {
   console.log(pair);
 }
 ```
@@ -1124,7 +1128,7 @@ Examples:
 const buf = Buffer.from('this is a buffer');
 
 // Prints: 0
-console.log(buf.indexOf('this')));
+console.log(buf.indexOf('this'));
 
 // Prints: 2
 console.log(buf.indexOf('is'));
@@ -1150,6 +1154,30 @@ console.log(utf16Buffer.indexOf('\u03a3', 0, 'ucs2'));
 
 // Prints: 6
 console.log(utf16Buffer.indexOf('\u03a3', -4, 'ucs2'));
+```
+
+If `value` is not a string, number, or `Buffer`, this method will throw a
+`TypeError`. If `value` is a number, it will be coerced to a valid byte value,
+an integer between 0 and 255.
+
+If `byteOffset` is not a number, it will be coerced to a number. Any arguments
+that coerce to `NaN` or 0, like `{}`, `[]`, `null` or `undefined`, will search
+the whole buffer. This behavior matches [`String#indexOf()`].
+
+```js
+const b = Buffer.from('abcdef');
+
+// Passing a value that's a number, but not a valid byte
+// Prints: 2, equivalent to searching for 99 or 'c'
+console.log(b.indexOf(99.9));
+console.log(b.indexOf(256 + 99));
+
+// Passing a byteOffset that coerces to NaN or 0
+// Prints: 1, searching the whole buffer
+console.log(b.indexOf('b', undefined));
+console.log(b.indexOf('b', {}));
+console.log(b.indexOf('b', null));
+console.log(b.indexOf('b', []));
 ```
 
 ### buf.includes(value[, byteOffset][, encoding])
@@ -1214,7 +1242,7 @@ const buf = Buffer.from('buffer');
 //   3
 //   4
 //   5
-for (var key of buf.keys()) {
+for (const key of buf.keys()) {
   console.log(key);
 }
 ```
@@ -1225,8 +1253,8 @@ added: v6.0.0
 -->
 
 * `value` {String | Buffer | Integer} What to search for
-* `byteOffset` {Integer} Where to begin searching in `buf` (not inclusive).
-  **Default:** [`buf.length`]
+* `byteOffset` {Integer} Where to begin searching in `buf`.
+  **Default:** [`buf.length`]` - 1`
 * `encoding` {String} If `value` is a string, this is its encoding.
   **Default:** `'utf8'`
 * Returns: {Integer} The index of the last occurrence of `value` in `buf` or `-1`
@@ -1266,10 +1294,37 @@ console.log(buf.lastIndexOf('buffer', 4));
 const utf16Buffer = Buffer.from('\u039a\u0391\u03a3\u03a3\u0395', 'ucs2');
 
 // Prints: 6
-console.log(utf16Buffer.lastIndexOf('\u03a3', null, 'ucs2'));
+console.log(utf16Buffer.lastIndexOf('\u03a3', undefined, 'ucs2'));
 
 // Prints: 4
 console.log(utf16Buffer.lastIndexOf('\u03a3', -5, 'ucs2'));
+```
+
+If `value` is not a string, number, or `Buffer`, this method will throw a
+`TypeError`. If `value` is a number, it will be coerced to a valid byte value,
+an integer between 0 and 255.
+
+If `byteOffset` is not a number, it will be coerced to a number. Any arguments
+that coerce to `NaN`, like `{}` or `undefined`, will search the whole buffer.
+This behavior matches [`String#lastIndexOf()`].
+
+```js
+const b = Buffer.from('abcdef');
+
+// Passing a value that's a number, but not a valid byte
+// Prints: 2, equivalent to searching for 99 or 'c'
+console.log(b.lastIndexOf(99.9));
+console.log(b.lastIndexOf(256 + 99));
+
+// Passing a byteOffset that coerces to NaN
+// Prints: 1, searching the whole buffer
+console.log(b.lastIndexOf('b', undefined));
+console.log(b.lastIndexOf('b', {}));
+
+// Passing a byteOffset that coerces to 0
+// Prints: -1, equivalent to passing 0
+console.log(b.lastIndexOf('b', null));
+console.log(b.lastIndexOf('b', []));
 ```
 
 ### buf.length
@@ -1304,7 +1359,7 @@ use [`buf.slice()`] to create a new `Buffer`.
 Examples:
 
 ```js
-var buf = Buffer.allocUnsafe(10);
+let buf = Buffer.allocUnsafe(10);
 
 buf.write('abcdefghj', 0, 'ascii');
 
@@ -1448,7 +1503,7 @@ const buf = Buffer.from([0, 5]);
 console.log(buf.readInt16BE());
 
 // Prints: 1280
-console.log(buf.readInt16LE(1));
+console.log(buf.readInt16LE());
 
 // Throws an exception: RangeError: Index out of range
 console.log(buf.readInt16LE(1));
@@ -1511,10 +1566,10 @@ Examples:
 ```js
 const buf = Buffer.from([0x12, 0x34, 0x56, 0x78, 0x90, 0xab]);
 
-// Prints: 1234567890ab
+// Prints: -546f87a9cbee
 console.log(buf.readIntLE(0, 6).toString(16));
 
-// Prints: -546f87a9cbee
+// Prints: 1234567890ab
 console.log(buf.readIntBE(0, 6).toString(16));
 
 // Throws an exception: RangeError: Index out of range
@@ -1675,7 +1730,7 @@ one byte from the original `Buffer`
 ```js
 const buf1 = Buffer.allocUnsafe(26);
 
-for (var i = 0 ; i < 26 ; i++) {
+for (let i = 0 ; i < 26 ; i++) {
   // 97 is the decimal ASCII value for 'a'
   buf1[i] = i + 97;
 }
@@ -1739,7 +1794,7 @@ console.log(buf1);
 const buf2 = Buffer.from([0x1, 0x2, 0x3]);
 
 // Throws an exception: RangeError: Buffer size must be a multiple of 16-bits
-buf2.swap32();
+buf2.swap16();
 ```
 
 ### buf.swap32()
@@ -1824,7 +1879,7 @@ Examples:
 ```js
 const buf1 = Buffer.allocUnsafe(26);
 
-for (var i = 0 ; i < 26 ; i++) {
+for (let i = 0 ; i < 26 ; i++) {
   // 97 is the decimal ASCII value for 'a'
   buf1[i] = i + 97;
 }
@@ -1899,7 +1954,7 @@ const buf = Buffer.from('buffer');
 //   102
 //   101
 //   114
-for (var value of buf.values()) {
+for (const value of buf.values()) {
   console.log(value);
 }
 
@@ -1910,7 +1965,7 @@ for (var value of buf.values()) {
 //   102
 //   101
 //   114
-for (var value of buf) {
+for (const value of buf) {
   console.log(value);
 }
 ```
@@ -2409,6 +2464,8 @@ console.log(buf);
 [RFC1345]: https://tools.ietf.org/html/rfc1345
 [RFC4648, Section 5]: https://tools.ietf.org/html/rfc4648#section-5
 [`String.prototype.length`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/length
+[`String#indexOf()`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/indexOf
+[`String#lastIndexOf()`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/lastIndexOf
 [`TypedArray`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/TypedArray
 [`TypedArray.from()`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/TypedArray/from
 [`Uint32Array`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Uint32Array

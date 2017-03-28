@@ -17,6 +17,10 @@
 // https://hg.mozilla.org/mozilla-central/raw-file/98820360ab66/security/
 // certverifier/CNNICHashWhitelist.inc
 #include "CNNICHashWhitelist.inc"
+// StartCom and WoSign root CA list is taken from
+// https://hg.mozilla.org/mozilla-central/file/tip/security/certverifier/
+// StartComAndWoSignData.inc
+#include "StartComAndWoSignData.inc"
 
 #include <errno.h>
 #include <limits.h>  // INT_MAX
@@ -120,7 +124,10 @@ const char* const root_certs[] = {
 #include "node_root_certs.h"  // NOLINT(build/include_order)
 };
 
+std::string extra_root_certs_file;  // NOLINT(runtime/string)
+
 X509_STORE* root_cert_store;
+std::vector<X509*>* root_certs_vector;
 
 // Just to generate static methods
 template class SSLWrap<TLSWrap>;
@@ -402,8 +409,6 @@ void SecureContext::Init(const FunctionCallbackInfo<Value>& args) {
                                  SSL_SESS_CACHE_NO_AUTO_CLEAR);
   SSL_CTX_sess_set_get_cb(sc->ctx_, SSLWrap<Connection>::GetSessionCallback);
   SSL_CTX_sess_set_new_cb(sc->ctx_, SSLWrap<Connection>::NewSessionCallback);
-
-  sc->ca_store_ = nullptr;
 }
 
 
@@ -672,8 +677,49 @@ void SecureContext::SetCert(const FunctionCallbackInfo<Value>& args) {
 }
 
 
+#if OPENSSL_VERSION_NUMBER < 0x10100000L && !defined(OPENSSL_IS_BORINGSSL)
+// This section contains OpenSSL 1.1.0 functions reimplemented for OpenSSL
+// 1.0.2 so that the following code can be written without lots of #if lines.
+
+static int X509_STORE_up_ref(X509_STORE* store) {
+  CRYPTO_add(&store->references, 1, CRYPTO_LOCK_X509_STORE);
+  return 1;
+}
+
+static int X509_up_ref(X509* cert) {
+  CRYPTO_add(&cert->references, 1, CRYPTO_LOCK_X509);
+  return 1;
+}
+#endif  // OPENSSL_VERSION_NUMBER < 0x10100000L && !OPENSSL_IS_BORINGSSL
+
+
+static X509_STORE* NewRootCertStore() {
+  if (!root_certs_vector) {
+    root_certs_vector = new std::vector<X509*>;
+
+    for (size_t i = 0; i < arraysize(root_certs); i++) {
+      BIO* bp = NodeBIO::NewFixed(root_certs[i], strlen(root_certs[i]));
+      X509 *x509 = PEM_read_bio_X509(bp, nullptr, CryptoPemCallback, nullptr);
+      BIO_free(bp);
+
+      // Parse errors from the built-in roots are fatal.
+      CHECK_NE(x509, nullptr);
+
+      root_certs_vector->push_back(x509);
+    }
+  }
+
+  X509_STORE* store = X509_STORE_new();
+  for (auto& cert : *root_certs_vector) {
+    X509_up_ref(cert);
+    X509_STORE_add_cert(store, cert);
+  }
+
+  return store;
+}
+
+
 void SecureContext::AddCACert(const FunctionCallbackInfo<Value>& args) {
-  bool newCAStore = false;
   Environment* env = Environment::GetCurrent(args);
 
   SecureContext* sc;
@@ -685,26 +731,24 @@ void SecureContext::AddCACert(const FunctionCallbackInfo<Value>& args) {
     return env->ThrowTypeError("CA certificate argument is mandatory");
   }
 
-  if (!sc->ca_store_) {
-    sc->ca_store_ = X509_STORE_new();
-    newCAStore = true;
+  BIO* bio = LoadBIO(env, args[0]);
+  if (!bio) {
+    return;
   }
 
-  unsigned cert_count = 0;
-  if (BIO* bio = LoadBIO(env, args[0])) {
-    while (X509* x509 =
-        PEM_read_bio_X509(bio, nullptr, CryptoPemCallback, nullptr)) {
-      X509_STORE_add_cert(sc->ca_store_, x509);
-      SSL_CTX_add_client_CA(sc->ctx_, x509);
-      X509_free(x509);
-      cert_count += 1;
+  X509_STORE* cert_store = SSL_CTX_get_cert_store(sc->ctx_);
+  while (X509* x509 =
+             PEM_read_bio_X509(bio, nullptr, CryptoPemCallback, nullptr)) {
+    if (cert_store == root_cert_store) {
+      cert_store = NewRootCertStore();
+      SSL_CTX_set_cert_store(sc->ctx_, cert_store);
     }
-    BIO_free_all(bio);
+    X509_STORE_add_cert(cert_store, x509);
+    SSL_CTX_add_client_CA(sc->ctx_, x509);
+    X509_free(x509);
   }
 
-  if (cert_count > 0 && newCAStore) {
-    SSL_CTX_set_cert_store(sc->ctx_, sc->ca_store_);
-  }
+  BIO_free_all(bio);
 }
 
 
@@ -725,22 +769,61 @@ void SecureContext::AddCRL(const FunctionCallbackInfo<Value>& args) {
   if (!bio)
     return;
 
-  X509_CRL *x509 =
+  X509_CRL* crl =
       PEM_read_bio_X509_CRL(bio, nullptr, CryptoPemCallback, nullptr);
 
-  if (x509 == nullptr) {
+  if (crl == nullptr) {
     BIO_free_all(bio);
-    return;
+    return env->ThrowError("Failed to parse CRL");
   }
 
-  X509_STORE_add_crl(sc->ca_store_, x509);
-  X509_STORE_set_flags(sc->ca_store_, X509_V_FLAG_CRL_CHECK |
-                                      X509_V_FLAG_CRL_CHECK_ALL);
+  X509_STORE* cert_store = SSL_CTX_get_cert_store(sc->ctx_);
+  if (cert_store == root_cert_store) {
+    cert_store = NewRootCertStore();
+    SSL_CTX_set_cert_store(sc->ctx_, cert_store);
+  }
+
+  X509_STORE_add_crl(cert_store, crl);
+  X509_STORE_set_flags(cert_store,
+                       X509_V_FLAG_CRL_CHECK | X509_V_FLAG_CRL_CHECK_ALL);
+
   BIO_free_all(bio);
-  X509_CRL_free(x509);
+  X509_CRL_free(crl);
 }
 
 
+void UseExtraCaCerts(const std::string& file) {
+  extra_root_certs_file = file;
+}
+
+
+static unsigned long AddCertsFromFile(  // NOLINT(runtime/int)
+    X509_STORE* store,
+    const char* file) {
+  ERR_clear_error();
+  MarkPopErrorOnReturn mark_pop_error_on_return;
+
+  BIO* bio = BIO_new_file(file, "r");
+  if (!bio) {
+    return ERR_get_error();
+  }
+
+  while (X509* x509 =
+      PEM_read_bio_X509(bio, nullptr, CryptoPemCallback, nullptr)) {
+    X509_STORE_add_cert(store, x509);
+    X509_free(x509);
+  }
+  BIO_free_all(bio);
+
+  unsigned long err = ERR_peek_error();  // NOLINT(runtime/int)
+  // Ignore error if its EOF/no start line found.
+  if (ERR_GET_LIB(err) == ERR_LIB_PEM &&
+      ERR_GET_REASON(err) == PEM_R_NO_START_LINE) {
+    return 0;
+  }
+
+  return err;
+}
 
 void SecureContext::AddRootCerts(const FunctionCallbackInfo<Value>& args) {
   SecureContext* sc;
@@ -748,32 +831,25 @@ void SecureContext::AddRootCerts(const FunctionCallbackInfo<Value>& args) {
   ClearErrorOnReturn clear_error_on_return;
   (void) &clear_error_on_return;  // Silence compiler warning.
 
-  CHECK_EQ(sc->ca_store_, nullptr);
-
   if (!root_cert_store) {
-    root_cert_store = X509_STORE_new();
+    root_cert_store = NewRootCertStore();
 
-    for (size_t i = 0; i < arraysize(root_certs); i++) {
-      BIO* bp = NodeBIO::NewFixed(root_certs[i], strlen(root_certs[i]));
-      if (bp == nullptr) {
-        return;
+    if (!extra_root_certs_file.empty()) {
+      unsigned long err = AddCertsFromFile(  // NOLINT(runtime/int)
+                                           root_cert_store,
+                                           extra_root_certs_file.c_str());
+      if (err) {
+        ProcessEmitWarning(sc->env(),
+                           "Ignoring extra certs from `%s`, load failed: %s\n",
+                           extra_root_certs_file.c_str(),
+                           ERR_error_string(err, nullptr));
       }
-
-      X509 *x509 = PEM_read_bio_X509(bp, nullptr, CryptoPemCallback, nullptr);
-      if (x509 == nullptr) {
-        BIO_free_all(bp);
-        return;
-      }
-
-      X509_STORE_add_cert(root_cert_store, x509);
-
-      BIO_free_all(bp);
-      X509_free(x509);
     }
   }
 
-  sc->ca_store_ = root_cert_store;
-  SSL_CTX_set_cert_store(sc->ctx_, sc->ca_store_);
+  // Increment reference count so global store is not deleted along with CTX.
+  X509_STORE_up_ref(root_cert_store);
+  SSL_CTX_set_cert_store(sc->ctx_, root_cert_store);
 }
 
 
@@ -983,6 +1059,8 @@ void SecureContext::LoadPKCS12(const FunctionCallbackInfo<Value>& args) {
     sc->cert_ = nullptr;
   }
 
+  X509_STORE* cert_store = SSL_CTX_get_cert_store(sc->ctx_);
+
   if (d2i_PKCS12_bio(in, &p12) &&
       PKCS12_parse(p12, pass, &pkey, &cert, &extra_certs) &&
       SSL_CTX_use_certificate_chain(sc->ctx_,
@@ -995,11 +1073,11 @@ void SecureContext::LoadPKCS12(const FunctionCallbackInfo<Value>& args) {
     for (int i = 0; i < sk_X509_num(extra_certs); i++) {
       X509* ca = sk_X509_value(extra_certs, i);
 
-      if (!sc->ca_store_) {
-        sc->ca_store_ = X509_STORE_new();
-        SSL_CTX_set_cert_store(sc->ctx_, sc->ca_store_);
+      if (cert_store == root_cert_store) {
+        cert_store = NewRootCertStore();
+        SSL_CTX_set_cert_store(sc->ctx_, cert_store);
       }
-      X509_STORE_add_cert(sc->ca_store_, ca);
+      X509_STORE_add_cert(cert_store, ca);
       SSL_CTX_add_client_CA(sc->ctx_, ca);
     }
     ret = true;
@@ -1070,10 +1148,14 @@ void SecureContext::SetTicketKeys(const FunctionCallbackInfo<Value>& args) {
 
 
 void SecureContext::SetFreeListLength(const FunctionCallbackInfo<Value>& args) {
+#if OPENSSL_VERSION_NUMBER < 0x10100000L && !defined(OPENSSL_IS_BORINGSSL)
+  // |freelist_max_len| was removed in OpenSSL 1.1.0. In that version OpenSSL
+  // mallocs and frees buffers directly, without the use of a freelist.
   SecureContext* wrap;
   ASSIGN_OR_RETURN_UNWRAP(&wrap, args.Holder());
 
   wrap->ctx_->freelist_max_len = args[0]->Int32Value();
+#endif
 }
 
 
@@ -1459,9 +1541,14 @@ static Local<Object> X509ToObject(Environment* env, X509* cert) {
                                     String::kNormalString, mem->length));
       (void) BIO_reset(bio);
 
-      BN_ULONG exponent_word = BN_get_word(rsa->e);
-      BIO_printf(bio, "0x%lx", exponent_word);
-
+      uint64_t exponent_word = static_cast<uint64_t>(BN_get_word(rsa->e));
+      uint32_t lo = static_cast<uint32_t>(exponent_word);
+      uint32_t hi = static_cast<uint32_t>(exponent_word >> 32);
+      if (hi == 0) {
+          BIO_printf(bio, "0x%x", lo);
+      } else {
+          BIO_printf(bio, "0x%x%08x", hi, lo);
+      }
       BIO_get_mem_ptr(bio, &mem);
       info->Set(env->exponent_string(),
                 String::NewFromUtf8(env->isolate(), mem->data,
@@ -2674,9 +2761,40 @@ inline X509* FindRoot(STACK_OF(X509)* sk) {
 }
 
 
-// Whitelist check for certs issued by CNNIC. See
+inline bool CertIsStartComOrWoSign(X509_NAME* name) {
+  const unsigned char* startcom_wosign_data;
+  X509_NAME* startcom_wosign_name;
+
+  for (const auto& dn : StartComAndWoSignDNs) {
+    startcom_wosign_data = dn.data;
+    startcom_wosign_name = d2i_X509_NAME(nullptr, &startcom_wosign_data,
+                                         dn.len);
+    if (X509_NAME_cmp(name, startcom_wosign_name) == 0)
+      return true;
+  }
+
+  return false;
+}
+
+// Revoke the certificates issued by StartCom or WoSign that has
+// notBefore after 00:00:00 on October 21, 2016 (1477008000 in epoch).
+inline bool CheckStartComOrWoSign(X509_NAME* root_name, X509* cert) {
+  if (!CertIsStartComOrWoSign(root_name))
+    return true;
+
+  time_t october_21_2016 = static_cast<time_t>(1477008000);
+  if (X509_cmp_time(X509_get_notBefore(cert), &october_21_2016) < 0)
+    return true;
+
+  return false;
+}
+
+
+// Whitelist check for certs issued by CNNIC, StartCom and WoSign. See
 // https://blog.mozilla.org/security/2015/04/02
-// /distrusting-new-cnnic-certificates/
+// /distrusting-new-cnnic-certificates/ and
+// https://blog.mozilla.org/security/2016/10/24/
+// distrusting-new-wosign-and-startcom-certificates
 inline CheckResult CheckWhitelistedServerCert(X509_STORE_CTX* ctx) {
   unsigned char hash[CNNIC_WHITELIST_HASH_LEN];
   unsigned int hashlen = CNNIC_WHITELIST_HASH_LEN;
@@ -2695,11 +2813,14 @@ inline CheckResult CheckWhitelistedServerCert(X509_STORE_CTX* ctx) {
     root_name = X509_get_subject_name(root_cert);
   }
 
+  X509* leaf_cert = sk_X509_value(chain, 0);
+  if (!CheckStartComOrWoSign(root_name, leaf_cert))
+    return CHECK_CERT_REVOKED;
+
   // When the cert is issued from either CNNNIC ROOT CA or CNNNIC EV
   // ROOT CA, check a hash of its leaf cert if it is in the whitelist.
   if (X509_NAME_cmp(root_name, cnnic_name) == 0 ||
       X509_NAME_cmp(root_name, cnnic_ev_name) == 0) {
-    X509* leaf_cert = sk_X509_value(chain, 0);
     int ret = X509_digest(leaf_cert, EVP_sha256(), hash,
                           &hashlen);
     CHECK(ret);
@@ -3607,8 +3728,8 @@ void Hmac::HmacInit(const FunctionCallbackInfo<Value>& args) {
 bool Hmac::HmacUpdate(const char* data, int len) {
   if (!initialised_)
     return false;
-  HMAC_Update(&ctx_, reinterpret_cast<const unsigned char*>(data), len);
-  return true;
+  int r = HMAC_Update(&ctx_, reinterpret_cast<const unsigned char*>(data), len);
+  return r == 1;
 }
 
 

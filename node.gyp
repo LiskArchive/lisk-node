@@ -93,6 +93,7 @@
       'lib/internal/v8_prof_processor.js',
       'lib/internal/streams/lazy_transform.js',
       'lib/internal/streams/BufferList.js',
+      'lib/internal/streams/legacy.js',
       'deps/v8/tools/splaytree.js',
       'deps/v8/tools/codemap.js',
       'deps/v8/tools/consarray.js',
@@ -133,17 +134,17 @@
         'src',
         'tools/msvs/genfiles',
         'deps/uv/src/ares',
-        '<(SHARED_INTERMEDIATE_DIR)', # for node_natives.h
+        '<(SHARED_INTERMEDIATE_DIR)',
       ],
 
       'sources': [
-        'src/debug-agent.cc',
         'src/async-wrap.cc',
-        'src/env.cc',
-        'src/fs_event_wrap.cc',
         'src/cares_wrap.cc',
         'src/connection_wrap.cc',
         'src/connect_wrap.cc',
+        'src/debug-agent.cc',
+        'src/env.cc',
+        'src/fs_event_wrap.cc',
         'src/handle_wrap.cc',
         'src/js_stream.cc',
         'src/node.cc',
@@ -153,7 +154,6 @@
         'src/node_contextify.cc',
         'src/node_file.cc',
         'src/node_http_parser.cc',
-        'src/node_javascript.cc',
         'src/node_main.cc',
         'src/node_os.cc',
         'src/node_revert.cc',
@@ -164,16 +164,18 @@
         'src/node_zlib.cc',
         'src/node_i18n.cc',
         'src/pipe_wrap.cc',
+        'src/process_wrap.cc',
         'src/signal_wrap.cc',
         'src/spawn_sync.cc',
         'src/string_bytes.cc',
+        'src/string_search.cc',
         'src/stream_base.cc',
         'src/stream_wrap.cc',
         'src/tcp_wrap.cc',
         'src/timer_wrap.cc',
         'src/tty_wrap.cc',
-        'src/process_wrap.cc',
         'src/udp_wrap.cc',
+        'src/util.cc',
         'src/uv.cc',
         # headers to make for a more pleasant IDE experience
         'src/async-wrap.h',
@@ -214,16 +216,14 @@
         'src/tree.h',
         'src/util.h',
         'src/util-inl.h',
-        'src/util.cc',
-        'src/string_search.cc',
         'deps/http_parser/http_parser.h',
         'deps/v8/include/v8.h',
         'deps/v8/include/v8-debug.h',
-        '<(SHARED_INTERMEDIATE_DIR)/node_natives.h',
         # javascript files to make for an even more pleasant IDE experience
         '<@(library_files)',
         # node.gyp is added to the project by default.
         'common.gypi',
+        '<(SHARED_INTERMEDIATE_DIR)/node_javascript.cc',
       ],
 
       'defines': [
@@ -697,12 +697,13 @@
       'actions': [
         {
           'action_name': 'node_js2c',
+          'process_outputs_as_sources': 1,
           'inputs': [
             '<@(library_files)',
             './config.gypi',
           ],
           'outputs': [
-            '<(SHARED_INTERMEDIATE_DIR)/node_natives.h',
+            '<(SHARED_INTERMEDIATE_DIR)/node_javascript.cc',
           ],
           'conditions': [
             [ 'node_use_dtrace=="false" and node_use_etw=="false"', {
@@ -935,6 +936,16 @@
             }, {
               'type': 'executable',
             }],
+            ['target_arch=="ppc64"', {
+              'ldflags': [
+                '-Wl,-blibpath:/usr/lib:/lib:/opt/freeware/lib/pthread/ppc64'
+              ],
+            }],
+            ['target_arch=="ppc"', {
+              'ldflags': [
+                '-Wl,-blibpath:/usr/lib:/lib:/opt/freeware/lib/pthread'
+              ],
+            }]
           ],
           'dependencies': ['<(node_core_target_name)', 'node_exp'],
 

@@ -2,7 +2,16 @@
 
 import sys
 if sys.version_info[0] != 2 or sys.version_info[1] not in (6, 7):
-  sys.stdout.write("Please use either Python 2.6 or 2.7\n")
+  sys.stderr.write('Please use either Python 2.6 or 2.7')
+
+  from distutils.spawn import find_executable as which
+  python2 = which('python2') or which('python2.6') or which('python2.7')
+
+  if python2:
+    sys.stderr.write(':\n\n')
+    sys.stderr.write('  ' + python2 + ' ' + ' '.join(sys.argv))
+
+  sys.stderr.write('\n')
   sys.exit(1)
 
 import errno
@@ -78,6 +87,17 @@ parser.add_option('--dest-cpu',
     dest='dest_cpu',
     choices=valid_arch,
     help='CPU architecture to build for ({0})'.format(', '.join(valid_arch)))
+
+parser.add_option('--cross-compiling',
+    action='store_true',
+    dest='cross_compiling',
+    default=None,
+    help='force build to be considered as cross compiled')
+parser.add_option('--no-cross-compiling',
+    action='store_false',
+    dest='cross_compiling',
+    default=None,
+    help='force build to be considered as NOT cross compiled')
 
 parser.add_option('--dest-os',
     action='store',
@@ -458,6 +478,12 @@ parser.add_option('--without-bundled-v8',
     help='do not use V8 includes from the bundled deps folder. ' +
          '(This mode is not officially supported for regular applications)')
 
+# Create compile_commands.json in out/Debug and out/Release.
+parser.add_option('-C',
+    action='store_true',
+    dest='compile_commands_json',
+    help=optparse.SUPPRESS_HELP)
+
 (options, args) = parser.parse_args()
 
 # Expand ~ in the install prefix now, it gets written to multiple files.
@@ -765,7 +791,9 @@ def configure_node(o):
   o['variables']['target_arch'] = target_arch
   o['variables']['node_byteorder'] = sys.byteorder
 
-  cross_compiling = target_arch != host_arch
+  cross_compiling = (options.cross_compiling
+                     if options.cross_compiling is not None
+                     else target_arch != host_arch)
   want_snapshots = not options.without_snapshot
   o['variables']['want_separate_host_toolset'] = int(
       cross_compiling and want_snapshots)
@@ -987,8 +1015,8 @@ def glob_to_var(dir_base, dir_sub, patch_dir):
 def configure_intl(o):
   icus = [
     {
-      'url': 'https://ssl.icu-project.org/files/icu4c/57.1/icu4c-57_1-src.zip',
-      'md5': 'f797503ecaebf1d38920013dc7893066',
+      'url': 'https://ssl.icu-project.org/files/icu4c/58.2/icu4c-58_2-src.zip',
+      'md5': 'f4fca37508fc5d14390501cf17aef084',
     },
   ]
   def icu_download(path):
@@ -1328,6 +1356,9 @@ elif flavor == 'win' and sys.platform != 'msys':
   gyp_args += ['-f', 'msvs', '-G', 'msvs_version=auto']
 else:
   gyp_args += ['-f', 'make-' + flavor]
+
+if options.compile_commands_json:
+  gyp_args += ['-f', 'compile_commands_json']
 
 gyp_args += args
 

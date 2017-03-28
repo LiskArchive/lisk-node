@@ -114,8 +114,6 @@ namespace node {
   V(flags_string, "flags")                                                    \
   V(gid_string, "gid")                                                        \
   V(handle_string, "handle")                                                  \
-  V(heap_total_string, "heapTotal")                                           \
-  V(heap_used_string, "heapUsed")                                             \
   V(homedir_string, "homedir")                                                \
   V(hostmaster_string, "hostmaster")                                          \
   V(ignore_string, "ignore")                                                  \
@@ -183,7 +181,6 @@ namespace node {
   V(rename_string, "rename")                                                  \
   V(replacement_string, "replacement")                                        \
   V(retry_string, "retry")                                                    \
-  V(rss_string, "rss")                                                        \
   V(serial_string, "serial")                                                  \
   V(scopeid_string, "scopeid")                                                \
   V(sent_shutdown_string, "sentShutdown")                                     \
@@ -457,11 +454,11 @@ class Environment {
   // List of id's that have been destroyed and need the destroy() cb called.
   inline std::vector<int64_t>* destroy_ids_list();
 
-  inline uint32_t* heap_statistics_buffer() const;
-  inline void set_heap_statistics_buffer(uint32_t* pointer);
+  inline double* heap_statistics_buffer() const;
+  inline void set_heap_statistics_buffer(double* pointer);
 
-  inline uint32_t* heap_space_statistics_buffer() const;
-  inline void set_heap_space_statistics_buffer(uint32_t* pointer);
+  inline double* heap_space_statistics_buffer() const;
+  inline void set_heap_space_statistics_buffer(double* pointer);
 
   inline char* http_parser_buffer() const;
   inline void set_http_parser_buffer(char* buffer);
@@ -577,8 +574,8 @@ class Environment {
            &HandleCleanup::handle_cleanup_queue_> handle_cleanup_queue_;
   int handle_cleanup_waiting_;
 
-  uint32_t* heap_statistics_buffer_ = nullptr;
-  uint32_t* heap_space_statistics_buffer_ = nullptr;
+  double* heap_statistics_buffer_ = nullptr;
+  double* heap_space_statistics_buffer_ = nullptr;
 
   char* http_parser_buffer_;
 

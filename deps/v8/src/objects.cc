@@ -3069,9 +3069,16 @@ void MigrateFastToSlow(Handle<JSObject> object, Handle<Map> new_map,
   // Ensure that in-object space of slow-mode object does not contain random
   // garbage.
   int inobject_properties = new_map->GetInObjectProperties();
-  for (int i = 0; i < inobject_properties; i++) {
-    FieldIndex index = FieldIndex::ForPropertyIndex(*new_map, i);
-    object->RawFastPropertyAtPut(index, Smi::FromInt(0));
+  if (inobject_properties) {
+    Heap* heap = isolate->heap();
+    heap->ClearRecordedSlotRange(
+        object->address() + map->GetInObjectPropertyOffset(0),
+        object->address() + new_instance_size);
+
+    for (int i = 0; i < inobject_properties; i++) {
+      FieldIndex index = FieldIndex::ForPropertyIndex(*new_map, i);
+      object->RawFastPropertyAtPut(index, Smi::FromInt(0));
+    }
   }
 
   isolate->counters()->props_to_dictionary()->Increment();
@@ -13080,50 +13087,51 @@ namespace {
 
 bool CanSubclassHaveInobjectProperties(InstanceType instance_type) {
   switch (instance_type) {
-    case JS_OBJECT_TYPE:
-    case JS_CONTEXT_EXTENSION_OBJECT_TYPE:
-    case JS_GENERATOR_OBJECT_TYPE:
-    case JS_MODULE_TYPE:
-    case JS_VALUE_TYPE:
-    case JS_DATE_TYPE:
-    case JS_ARRAY_TYPE:
-    case JS_MESSAGE_OBJECT_TYPE:
     case JS_ARRAY_BUFFER_TYPE:
-    case JS_TYPED_ARRAY_TYPE:
+    case JS_ARRAY_TYPE:
+    case JS_CONTEXT_EXTENSION_OBJECT_TYPE:
     case JS_DATA_VIEW_TYPE:
-    case JS_SET_TYPE:
-    case JS_MAP_TYPE:
-    case JS_SET_ITERATOR_TYPE:
+    case JS_DATE_TYPE:
+    case JS_FUNCTION_TYPE:
+    case JS_GENERATOR_OBJECT_TYPE:
     case JS_MAP_ITERATOR_TYPE:
-    case JS_WEAK_MAP_TYPE:
-    case JS_WEAK_SET_TYPE:
+    case JS_MAP_TYPE:
+    case JS_MESSAGE_OBJECT_TYPE:
+    case JS_MODULE_TYPE:
+    case JS_OBJECT_TYPE:
     case JS_PROMISE_TYPE:
     case JS_REGEXP_TYPE:
-    case JS_FUNCTION_TYPE:
+    case JS_SET_ITERATOR_TYPE:
+    case JS_SET_TYPE:
+    case JS_SPECIAL_API_OBJECT_TYPE:
+    case JS_TYPED_ARRAY_TYPE:
+    case JS_VALUE_TYPE:
+    case JS_WEAK_MAP_TYPE:
+    case JS_WEAK_SET_TYPE:
       return true;
 
-    case JS_BOUND_FUNCTION_TYPE:
-    case JS_PROXY_TYPE:
-    case JS_GLOBAL_PROXY_TYPE:
-    case JS_GLOBAL_OBJECT_TYPE:
+    case BYTECODE_ARRAY_TYPE:
+    case BYTE_ARRAY_TYPE:
+    case CELL_TYPE:
+    case CODE_TYPE:
+    case FILLER_TYPE:
     case FIXED_ARRAY_TYPE:
     case FIXED_DOUBLE_ARRAY_TYPE:
-    case ODDBALL_TYPE:
     case FOREIGN_TYPE:
-    case MAP_TYPE:
-    case CODE_TYPE:
-    case CELL_TYPE:
-    case PROPERTY_CELL_TYPE:
-    case WEAK_CELL_TYPE:
-    case SYMBOL_TYPE:
-    case BYTECODE_ARRAY_TYPE:
-    case HEAP_NUMBER_TYPE:
-    case MUTABLE_HEAP_NUMBER_TYPE:
-    case SIMD128_VALUE_TYPE:
-    case FILLER_TYPE:
-    case BYTE_ARRAY_TYPE:
     case FREE_SPACE_TYPE:
+    case HEAP_NUMBER_TYPE:
+    case JS_BOUND_FUNCTION_TYPE:
+    case JS_GLOBAL_OBJECT_TYPE:
+    case JS_GLOBAL_PROXY_TYPE:
+    case JS_PROXY_TYPE:
+    case MAP_TYPE:
+    case MUTABLE_HEAP_NUMBER_TYPE:
+    case ODDBALL_TYPE:
+    case PROPERTY_CELL_TYPE:
     case SHARED_FUNCTION_INFO_TYPE:
+    case SIMD128_VALUE_TYPE:
+    case SYMBOL_TYPE:
+    case WEAK_CELL_TYPE:
 
 #define TYPED_ARRAY_CASE(Type, type, TYPE, ctype, size) \
   case FIXED_##TYPE##_ARRAY_TYPE:

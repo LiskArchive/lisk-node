@@ -44,11 +44,11 @@ var qsTestCases = [
   ['foo=%EF%BF%BD', 'foo=%EF%BF%BD', {'foo': '\ufffd' }],
   // See: https://github.com/joyent/node/issues/1707
   ['hasOwnProperty=x&toString=foo&valueOf=bar&__defineGetter__=baz',
-    'hasOwnProperty=x&toString=foo&valueOf=bar&__defineGetter__=baz',
-    { hasOwnProperty: 'x',
-      toString: 'foo',
-      valueOf: 'bar',
-      __defineGetter__: 'baz' }],
+   'hasOwnProperty=x&toString=foo&valueOf=bar&__defineGetter__=baz',
+   { hasOwnProperty: 'x',
+     toString: 'foo',
+     valueOf: 'bar',
+     __defineGetter__: 'baz' }],
   // See: https://github.com/joyent/node/issues/3058
   ['foo&bar=baz', 'foo=&bar=baz', { foo: '', bar: 'baz' }],
   [null, '', {}],
@@ -95,10 +95,25 @@ var qsNoMungeTestCases = [
   ['foo=bar&foo=baz', {'foo': ['bar', 'baz']}],
   ['foo=bar&foo=baz', foreignObject],
   ['blah=burp', {'blah': 'burp'}],
+  ['a=!-._~\'()*', {'a': '!-._~\'()*'}],
+  ['a=abcdefghijklmnopqrstuvwxyz', {'a': 'abcdefghijklmnopqrstuvwxyz'}],
+  ['a=ABCDEFGHIJKLMNOPQRSTUVWXYZ', {'a': 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'}],
+  ['a=0123456789', {'a': '0123456789'}],
   ['gragh=1&gragh=3&goo=2', {'gragh': ['1', '3'], 'goo': '2'}],
   ['frappucino=muffin&goat%5B%5D=scone&pond=moose',
    {'frappucino': 'muffin', 'goat[]': 'scone', 'pond': 'moose'}],
   ['trololol=yes&lololo=no', {'trololol': 'yes', 'lololo': 'no'}]
+];
+
+const qsUnescapeTestCases = [
+  ['there is nothing to unescape here',
+   'there is nothing to unescape here'],
+  ['there%20are%20several%20spaces%20that%20need%20to%20be%20unescaped',
+   'there are several spaces that need to be unescaped'],
+  ['there%2Qare%0-fake%escaped values in%%%%this%9Hstring',
+   'there%2Qare%0-fake%escaped values in%%%%this%9Hstring'],
+  ['%20%21%22%23%24%25%26%27%28%29%2A%2B%2C%2D%2E%2F%30%31%32%33%34%35%36%37',
+   ' !"#$%&\'()*+,-./01234567']
 ];
 
 assert.strictEqual('918854443121279438895193',
@@ -220,8 +235,20 @@ assert.doesNotThrow(function() {
   assert.equal(f, 'a:b;q:x%3Ay%3By%3Az');
 }
 
+// empty string
+assert.strictEqual(qs.stringify(), '');
+assert.strictEqual(qs.stringify(0), '');
+assert.strictEqual(qs.stringify([]), '');
+assert.strictEqual(qs.stringify(null), '');
+assert.strictEqual(qs.stringify(true), '');
+
 check(qs.parse(), {});
 
+// empty sep
+check(qs.parse('a', []), { a: '' });
+
+// empty eq
+check(qs.parse('a', null, []), { '': 'a' });
 
 // Test limiting
 assert.equal(
@@ -267,6 +294,13 @@ assert.equal(0xd8, b[17]);
 assert.equal(0xa2, b[18]);
 assert.equal(0xe6, b[19]);
 
+assert.strictEqual(qs.unescapeBuffer('a+b', true).toString(), 'a b');
+assert.strictEqual(qs.unescapeBuffer('a%').toString(), 'a%');
+assert.strictEqual(qs.unescapeBuffer('a%2').toString(), 'a%2');
+assert.strictEqual(qs.unescapeBuffer('a%20').toString(), 'a ');
+assert.strictEqual(qs.unescapeBuffer('a%2g').toString(), 'a%2g');
+assert.strictEqual(qs.unescapeBuffer('a%%').toString(), 'a%%');
+
 
 // Test custom decode
 function demoDecode(str) {
@@ -275,6 +309,12 @@ function demoDecode(str) {
 check(qs.parse('a=a&b=b&c=c', null, null, { decodeURIComponent: demoDecode }),
       { aa: 'aa', bb: 'bb', cc: 'cc' });
 
+// Test QueryString.unescape
+function errDecode(str) {
+  throw new Error('To jump to the catch scope');
+}
+check(qs.parse('a=a', null, null, { decodeURIComponent: errDecode }),
+      { a: 'a' });
 
 // Test custom encode
 function demoEncode(str) {
@@ -284,6 +324,12 @@ var obj = { aa: 'aa', bb: 'bb', cc: 'cc' };
 assert.equal(
   qs.stringify(obj, null, null, { encodeURIComponent: demoEncode }),
   'a=a&b=b&c=c');
+
+// Test QueryString.unescapeBuffer
+qsUnescapeTestCases.forEach(function(testCase) {
+  assert.strictEqual(qs.unescape(testCase[0]), testCase[1]);
+  assert.strictEqual(qs.unescapeBuffer(testCase[0]).toString(), testCase[1]);
+});
 
 // test overriding .unescape
 var prevUnescape = qs.unescape;

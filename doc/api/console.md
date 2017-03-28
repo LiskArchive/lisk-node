@@ -9,9 +9,14 @@ The module exports two specific components:
 
 * A `Console` class with methods such as `console.log()`, `console.error()` and
   `console.warn()` that can be used to write to any Node.js stream.
-* A global `console` instance configured to write to `stdout` and `stderr`.
-  Because this object is global, it can be used without calling
+* A global `console` instance configured to write to [`process.stdout`][] and
+  [`process.stderr`][].  The global `console` can be used without calling
   `require('console')`.
+
+***Warning***: The global console object's methods are neither consistently
+synchronous like the browser APIs they resemble, nor are they consistently
+asynchronous like all other Node.js streams. See the [note on process I/O][] for
+more information.
 
 Example using the global `console`:
 
@@ -47,21 +52,6 @@ myConsole.warn(`Danger ${name}! Danger!`);
 // Prints: Danger Will Robinson! Danger!, to err
 ```
 
-While the API for the `Console` class is designed fundamentally around the
-browser `console` object, the `Console` in Node.js is *not* intended to
-duplicate the browser's functionality exactly.
-
-## Asynchronous vs Synchronous Consoles
-
-The console functions are usually asynchronous unless the destination is a file.
-Disks are fast and operating systems normally employ write-back caching;
-it should be a very rare occurrence indeed that a write blocks, but it
-is possible.
-
-Additionally, console functions are blocking when outputting to TTYs
-(terminals) on OS X as a workaround for the OS's very small, 1kb buffer size.
-This is to prevent interleaving between `stdout` and `stderr`.
-
 ## Class: Console
 
 <!--type=class-->
@@ -79,7 +69,7 @@ const Console = console.Console;
 
 Creates a new `Console` by passing one or two writable stream instances.
 `stdout` is a writable stream to print log or info output. `stderr`
-is used for warning or error output. If `stderr` isn't passed, warning and error
+is used for warning or error output. If `stderr` is not passed, warning and error
 output will be sent to `stdout`.
 
 ```js
@@ -88,7 +78,7 @@ const errorOutput = fs.createWriteStream('./stderr.log');
 // custom simple logger
 const logger = new Console(output, errorOutput);
 // use it like console
-var count = 5;
+const count = 5;
 logger.log('count: %d', count);
 // in stdout.log: count 5
 ```
@@ -135,15 +125,20 @@ the default behavior of `console` in Node.js.
 
 // Creates a simple extension of console with a
 // new impl for assert without monkey-patching.
-const myConsole = Object.setPrototypeOf({
-  assert(assertion, message, ...args) {
-    try {
-      console.assert(assertion, message, ...args);
-    } catch (err) {
-      console.error(err.stack);
-    }
-  }
-}, console);
+const myConsole = Object.create(console, {
+  assert: {
+    value: function assert(assertion, message, ...args) {
+      try {
+        console.assert(assertion, message, ...args);
+      } catch (err) {
+        console.error(err.stack);
+      }
+    },
+    configurable: true,
+    enumerable: true,
+    writable: true,
+  },
+});
 
 module.exports = myConsole;
 ```
@@ -217,7 +212,7 @@ values similar to printf(3) (the arguments are all passed to
 [`util.format()`][]).
 
 ```js
-var count = 5;
+const count = 5;
 console.log('count: %d', count);
 // Prints: count: 5, to stdout
 console.log('count:', count);
@@ -248,7 +243,7 @@ prints the result to `stdout`:
 
 ```js
 console.time('100-elements');
-for (var i = 0; i < 100; i++) {
+for (let i = 0; i < 100; i++) {
   ;
 }
 console.timeEnd('100-elements');
@@ -300,4 +295,5 @@ The `console.warn()` function is an alias for [`console.error()`][].
 [`util.format()`]: util.html#util_util_format_format_args
 [`util.inspect()`]: util.html#util_util_inspect_object_options
 [customizing `util.inspect()` colors]: util.html#util_customizing_util_inspect_colors
+[note on process I/O]: process.html#process_a_note_on_process_i_o
 [web-api-assert]: https://developer.mozilla.org/en-US/docs/Web/API/console/assert

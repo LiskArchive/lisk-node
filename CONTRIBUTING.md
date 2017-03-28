@@ -16,7 +16,7 @@ For general help using Node.js, please file an issue at the
 [Node.js help repository](https://github.com/nodejs/help/issues).
 
 Discussion of non-technical topics including subjects like intellectual
-property, trademark and high level project questions should move to the
+property, trademark, and high level project questions should move to the
 [Technical Steering Committee (TSC)](https://github.com/nodejs/TSC/issues)
 instead.
 
@@ -85,6 +85,9 @@ Create a branch and start hacking:
 $ git checkout -b my-branch -t origin/master
 ```
 
+Any text you write should follow the [Style Guide](doc/STYLE_GUIDE.md),
+including comments and API documentation.
+
 ### Step 3: Commit
 
 Make sure git knows your name and email address:
@@ -109,8 +112,8 @@ changed and why. Follow these guidelines when writing one:
    lowercase with the exception of proper nouns, acronyms, and the ones that
    refer to code, like function/variable names. The description should
    be prefixed with the name of the changed subsystem and start with an
-   imperative verb, for example, "net: add localAddress and localPort
-   to Socket".
+   imperative verb. Example: "net: add localAddress and localPort
+   to Socket"
 2. Keep the second line blank.
 3. Wrap all other lines at 72 columns.
 
@@ -121,11 +124,11 @@ subsystem: explain the commit in one line
 
 Body of commit message is a few lines of text, explaining things
 in more detail, possibly giving some background about the issue
-being fixed, etc. etc.
+being fixed, etc.
 
 The body of the commit message can be several paragraphs, and
 please do proper word-wrap and keep columns shorter than about
-72 characters or so. That way `git log` will show things
+72 characters or so. That way, `git log` will show things
 nicely even when it is indented.
 ```
 
@@ -136,10 +139,13 @@ Check the output of `git log --oneline files_that_you_changed` to find out
 what subsystem (or subsystems) your changes touch.
 
 If your patch fixes an open issue, you can add a reference to it at the end
-of the log. Use the `Fixes:` prefix and the full issue URL. For example:
+of the log. Use the `Fixes:` prefix and the full issue URL. For other references
+use `Refs:`. For example:
 
 ```txt
 Fixes: https://github.com/nodejs/node/issues/1337
+Refs: http://eslint.org/docs/rules/space-in-parens.html
+Refs: https://github.com/nodejs/node/pull/3615
 ```
 
 ### Step 4: Rebase
@@ -161,7 +167,7 @@ to see how they should be structured can also help.
 To run the tests on Unix / OS X:
 
 ```text
-$ ./configure && make -j8 test
+$ ./configure && make -j4 test
 ```
 
 Windows:
@@ -172,14 +178,14 @@ Windows:
 
 (See the [BUILDING.md](./BUILDING.md) for more details.)
 
-Make sure the linter is happy and that all tests pass. Please, do not submit
-patches that fail either check.
+Make sure the linter does not report any issues and that all tests pass. Please
+do not submit patches that fail either check.
 
 Running `make test`/`vcbuild test` will run the linter as well unless one or
 more tests fail.
 
 If you want to run the linter without running tests, use
-`make lint`/`vcbuild jslint`.
+`make lint`/`vcbuild lint`.
 
 If you are updating tests and just want to run a single test to check it, you
 can use this syntax to run it exactly as the test harness would:
@@ -194,7 +200,7 @@ You can run tests directly with node:
 $ ./node ./test/parallel/test-stream2-transform.js
 ```
 
-Remember to recompile with `make -j8` in between test runs if you change
+Remember to recompile with `make -j4` in between test runs if you change
 core modules.
 
 ### Step 6: Push
@@ -211,7 +217,7 @@ Pull requests are usually reviewed within a few days.
 ### Step 7: Discuss and update
 
 You will probably get feedback or requests for changes to your Pull Request.
-This is a big part of the submission process, so don't be disheartened!
+This is a big part of the submission process so don't be disheartened!
 
 To make changes to an existing Pull Request, make the changes to your branch.
 When you push that branch to your fork, GitHub will automatically update the
@@ -248,18 +254,85 @@ If in doubt, you can always ask for guidance in the Pull Request or on
 [IRC in the #node-dev channel](https://webchat.freenode.net?channels=node-dev&uio=d4).
 
 Feel free to post a comment in the Pull Request to ping reviewers if you are
-awaiting an answer on something.
+awaiting an answer on something. If you encounter words or acronyms that
+seem unfamiliar, refer to this
+[glossary](https://sites.google.com/a/chromium.org/dev/glossary).
 
+Note that multiple commits often get squashed when they are landed (see the
+notes about [commit squashing](#commit-squashing)).
 
 ### Step 8: Landing
 
-Once your Pull Request has been reviewed and approved by at least one Node.js
-Collaborators (often by saying LGTM, or Looks Good To Me), and as long as
-there is consensus (no objections from a Collaborator), a
-Collaborator can merge the Pull Request . GitHub often shows the Pull Request as
- `Closed` at this point, but don't worry. If you look at the branch you raised
- your Pull Request against (probably `master`), you should see a commit with
- your name on it. Congratulations and thanks for your contribution!
+In order to land, a Pull Request needs to be reviewed and
+[approved](#getting-approvals-for-your-pull-request) by
+at least one Node.js Collaborator and pass a
+[CI (Continuous Integration) test run](#ci-testing).
+After that, as long as there are no objections
+from a Collaborator, the Pull Request can be merged. If you find your
+Pull Request waiting longer than you expect, see the
+[notes about the waiting time](#waiting-until-the-pull-request-gets-landed).
+
+When a collaborator lands your Pull Request, they will post
+a comment to the Pull Request page mentioning the commit(s) it
+landed as. GitHub often shows the Pull Request as `Closed` at this
+point, but don't worry. If you look at the branch you raised your
+Pull Request against (probably `master`), you should see a commit with
+your name on it. Congratulations and thanks for your contribution!
+
+## Additional Notes
+
+### Commit Squashing
+
+When the commits in your Pull Request land, they will be squashed
+into one commit per logical change. Metadata will be added to the commit
+message (including links to the Pull Request, links to relevant issues,
+and the names of the reviewers). The commit history of your Pull Request,
+however, will stay intact on the Pull Request page.
+
+For the size of "one logical change",
+[0b5191f](https://github.com/nodejs/node/commit/0b5191f15d0f311c804d542b67e2e922d98834f8)
+can be a good example. It touches the implementation, the documentation,
+and the tests, but is still one logical change. In general, the tests should
+always pass when each individual commit lands on the master branch.
+
+### Getting Approvals for Your Pull Request
+
+A Pull Request is approved either by saying LGTM, which stands for
+"Looks Good To Me", or by using GitHub's Approve button.
+GitHub's Pull Request review feature can be used during the process.
+For more information, check out
+[the video tutorial](https://www.youtube.com/watch?v=HW0RPaJqm4g)
+or [the official documentation](https://help.github.com/articles/reviewing-changes-in-pull-requests/).
+
+After you push new changes to your branch, you need to get
+approval for these new changes again, even if GitHub shows "Approved"
+because the reviewers have hit the buttons before.
+
+### CI Testing
+
+Every Pull Request needs to be tested
+to make sure that it works on the platforms that Node.js
+supports. This is done by running the code through the CI system.
+
+Only a Collaborator can start a CI run. Usually one of them will do it
+for you as approvals for the Pull Request come in.
+If not, you can ask a Collaborator to start a CI run.
+
+### Waiting Until the Pull Request Gets Landed
+
+A Pull Request needs to stay open for at least 48 hours (72 hours on a
+weekend) from when it is submitted, even after it gets approved and
+passes the CI. This is to make sure that everyone has a chance to
+weigh in. If the changes are trivial, collaborators may decide it
+doesn't need to wait. A Pull Request may well take longer to be
+merged in. All these precautions are important because Node.js is
+widely used, so don't be discouraged!
+
+### Check Out the Collaborator's Guide
+
+If you want to know more about the code review and the landing process,
+you can take a look at the
+[collaborator's guide](https://github.com/nodejs/node/blob/master/COLLABORATOR_GUIDE.md).
 
 <a id="developers-certificate-of-origin"></a>
 ## Developer's Certificate of Origin 1.1

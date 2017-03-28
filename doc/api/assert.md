@@ -1,21 +1,16 @@
 # Assert
 
-> Stability: 3 - Locked
+> Stability: 2 - Stable
 
 The `assert` module provides a simple set of assertion tests that can be used to
-test invariants. The module is intended for internal use by Node.js, but can be
-used in application code via `require('assert')`. However, `assert` is not a
-testing framework, and is not intended to be used as a general purpose assertion
-library.
-
-The API for the `assert` module is [Locked][]. This means that there will be no
-additions or changes to any of the methods implemented and exposed by
-the module.
+test invariants.
 
 ## assert(value[, message])
 <!-- YAML
 added: v0.5.9
 -->
+* `value` {any}
+* `message` {any}
 
 An alias of [`assert.ok()`][] .
 
@@ -38,6 +33,9 @@ assert(false, 'it\'s false');
 <!-- YAML
 added: v0.1.21
 -->
+* `actual` {any}
+* `expected` {any}
+* `message` {any}
 
 Tests for deep equality between the `actual` and `expected` parameters.
 Primitive values are compared with the equal comparison operator ( `==` ).
@@ -99,6 +97,9 @@ parameter is undefined, a default error message is assigned.
 <!-- YAML
 added: v1.2.0
 -->
+* `actual` {any}
+* `expected` {any}
+* `message` {any}
 
 Generally identical to `assert.deepEqual()` with two exceptions. First,
 primitive values are compared using the strict equality operator ( `===` ).
@@ -123,6 +124,9 @@ parameter is undefined, a default error message is assigned.
 <!-- YAML
 added: v0.1.21
 -->
+* `block` {Function}
+* `error` {RegExp|Function}
+* `message` {any}
 
 Asserts that the function `block` does not throw an error. See
 [`assert.throws()`][] for more details.
@@ -178,6 +182,9 @@ assert.doesNotThrow(
 <!-- YAML
 added: v0.1.21
 -->
+* `actual` {any}
+* `expected` {any}
+* `message` {any}
 
 Tests shallow, coercive equality between the `actual` and `expected` parameters
 using the equal comparison operator ( `==` ).
@@ -204,6 +211,10 @@ parameter is undefined, a default error message is assigned.
 <!-- YAML
 added: v0.1.21
 -->
+* `actual` {any}
+* `expected` {any}
+* `message` {any}
+* `operator` {String}
 
 Throws an `AssertionError`. If `message` is falsy, the error message is set as
 the values of `actual` and `expected` separated by the provided `operator`.
@@ -223,6 +234,7 @@ assert.fail(1, 2, 'whoops', '>');
 <!-- YAML
 added: v0.1.97
 -->
+* `value` {any}
 
 Throws `value` if `value` is truthy. This is useful when testing the `error`
 argument in callbacks.
@@ -244,6 +256,9 @@ assert.ifError(new Error());
 <!-- YAML
 added: v0.1.21
 -->
+* `actual` {any}
+* `expected` {any}
+* `message` {any}
 
 Tests for any deep inequality. Opposite of [`assert.deepEqual()`][].
 
@@ -288,6 +303,9 @@ parameter is undefined, a default error message is assigned.
 <!-- YAML
 added: v1.2.0
 -->
+* `actual` {any}
+* `expected` {any}
+* `message` {any}
 
 Tests for deep strict inequality. Opposite of [`assert.deepStrictEqual()`][].
 
@@ -309,6 +327,9 @@ the `message` parameter is undefined, a default error message is assigned.
 <!-- YAML
 added: v0.1.21
 -->
+* `actual` {any}
+* `expected` {any}
+* `message` {any}
 
 Tests shallow, coercive inequality with the not equal comparison operator
 ( `!=` ).
@@ -334,6 +355,9 @@ parameter is undefined, a default error message is assigned.
 <!-- YAML
 added: v0.1.21
 -->
+* `actual` {any}
+* `expected` {any}
+* `message` {any}
 
 Tests strict inequality as determined by the strict not equal operator
 ( `!==` ).
@@ -359,6 +383,8 @@ If the values are strictly equal, an `AssertionError` is thrown with a
 <!-- YAML
 added: v0.1.21
 -->
+* `value` {any}
+* `message` {any}
 
 Tests if `value` is truthy. It is equivalent to
 `assert.equal(!!value, true, message)`.
@@ -386,6 +412,9 @@ assert.ok(false, 'it\'s false');
 <!-- YAML
 added: v0.1.21
 -->
+* `actual` {any}
+* `expected` {any}
+* `message` {any}
 
 Tests strict equality as determined by the strict equality operator ( `===` ).
 
@@ -410,6 +439,9 @@ If the values are not strictly equal, an `AssertionError` is thrown with a
 <!-- YAML
 added: v0.1.21
 -->
+* `block` {Function}
+* `error` {RegExp|Function}
+* `message` {any}
 
 Expects the function `block` to throw an error.
 
@@ -469,7 +501,6 @@ assert.throws(myFunction, 'missing foo', 'did not throw with expected message');
 assert.throws(myFunction, /missing foo/, 'did not throw with expected message');
 ```
 
-[Locked]: documentation.html#documentation_stability_index
 [`assert.deepEqual()`]: #assert_assert_deepequal_actual_expected_message
 [`assert.deepStrictEqual()`]: #assert_assert_deepstrictequal_actual_expected_message
 [`assert.ok()`]: #assert_assert_ok_value_message

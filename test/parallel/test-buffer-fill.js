@@ -2,12 +2,10 @@
 
 require('../common');
 const assert = require('assert');
-const os = require('os');
 const SIZE = 28;
 
 const buf1 = Buffer.allocUnsafe(SIZE);
 const buf2 = Buffer.allocUnsafe(SIZE);
-
 
 // Default encoding
 testBufs('abc');
@@ -112,8 +110,7 @@ testBufs('\u0222aa', 8, 1, 'ucs2');
 testBufs('a\u0234b\u0235c\u0236', 4, -1, 'ucs2');
 testBufs('a\u0234b\u0235c\u0236', 4, 1, 'ucs2');
 testBufs('a\u0234b\u0235c\u0236', 12, 1, 'ucs2');
-assert.strictEqual(Buffer.allocUnsafe(1).fill('\u0222', 'ucs2')[0],
-                   os.endianness() === 'LE' ? 0x22 : 0x02);
+assert.strictEqual(Buffer.allocUnsafe(1).fill('\u0222', 'ucs2')[0], 0x22);
 
 
 // HEX
@@ -187,20 +184,20 @@ deepStrictEqualValues(genBuffer(4, [hexBufFill, 1, -1]), [0, 0, 0, 0]);
 assert.throws(() => buf1.fill(0, -1), /^RangeError: Out of range index$/);
 assert.throws(() =>
              buf1.fill(0, 0, buf1.length + 1),
-             /^RangeError: Out of range index$/);
+              /^RangeError: Out of range index$/);
 assert.throws(() => buf1.fill('', -1), /^RangeError: Out of range index$/);
 assert.throws(() =>
              buf1.fill('', 0, buf1.length + 1),
-             /^RangeError: Out of range index$/);
+              /^RangeError: Out of range index$/);
 assert.throws(() =>
              buf1.fill('a', 0, buf1.length, 'node rocks!'),
-             /^TypeError: Unknown encoding: node rocks!$/);
+              /^TypeError: Unknown encoding: node rocks!$/);
 assert.throws(() =>
              buf1.fill('a', 0, 0, NaN),
-             /^TypeError: encoding must be a string$/);
+              /^TypeError: encoding must be a string$/);
 assert.throws(() =>
              buf1.fill('a', 0, 0, null),
-             /^TypeError: encoding must be a string$/);
+              /^TypeError: encoding must be a string$/);
 assert.throws(() =>
              buf1.fill('a', 0, 0, 'foo'), /^TypeError: Unknown encoding: foo$/);
 
@@ -259,15 +256,6 @@ function writeToFill(string, offset, end, encoding) {
     }
   } while (offset < buf2.length);
 
-  // Correction for UCS2 operations.
-  if (os.endianness() === 'BE' && encoding === 'ucs2') {
-    for (var i = 0; i < buf2.length; i += 2) {
-      var tmp = buf2[i];
-      buf2[i] = buf2[i + 1];
-      buf2[i + 1] = tmp;
-    }
-  }
-
   return buf2;
 }
 
@@ -283,10 +271,10 @@ function testBufs(string, offset, length, encoding) {
 // Make sure these throw.
 assert.throws(() =>
              Buffer.allocUnsafe(8).fill('a', -1),
-             /^RangeError: Out of range index$/);
+              /^RangeError: Out of range index$/);
 assert.throws(() =>
              Buffer.allocUnsafe(8).fill('a', 0, 9),
-             /^RangeError: Out of range index$/);
+              /^RangeError: Out of range index$/);
 
 // Make sure this doesn't hang indefinitely.
 Buffer.allocUnsafe(8).fill('');
@@ -406,3 +394,38 @@ assert.throws(() => {
   });
   buf.fill('');
 }, /^RangeError: out of range index$/);
+
+assert.deepStrictEqual(
+    Buffer.allocUnsafeSlow(16).fill('ab', 'utf16le'),
+    Buffer.from('61006200610062006100620061006200', 'hex'));
+
+assert.deepStrictEqual(
+    Buffer.allocUnsafeSlow(15).fill('ab', 'utf16le'),
+    Buffer.from('610062006100620061006200610062', 'hex'));
+
+assert.deepStrictEqual(
+    Buffer.allocUnsafeSlow(16).fill('ab', 'utf16le'),
+    Buffer.from('61006200610062006100620061006200', 'hex'));
+assert.deepStrictEqual(
+    Buffer.allocUnsafeSlow(16).fill('a', 'utf16le'),
+    Buffer.from('61006100610061006100610061006100', 'hex'));
+
+assert.strictEqual(
+    Buffer.allocUnsafeSlow(16).fill('a', 'utf16le').toString('utf16le'),
+    'a'.repeat(8));
+assert.strictEqual(
+    Buffer.allocUnsafeSlow(16).fill('a', 'latin1').toString('latin1'),
+    'a'.repeat(16));
+assert.strictEqual(
+    Buffer.allocUnsafeSlow(16).fill('a', 'utf8').toString('utf8'),
+    'a'.repeat(16));
+
+assert.strictEqual(
+    Buffer.allocUnsafeSlow(16).fill('Љ', 'utf16le').toString('utf16le'),
+    'Љ'.repeat(8));
+assert.strictEqual(
+    Buffer.allocUnsafeSlow(16).fill('Љ', 'latin1').toString('latin1'),
+    '\t'.repeat(16));
+assert.strictEqual(
+    Buffer.allocUnsafeSlow(16).fill('Љ', 'utf8').toString('utf8'),
+    'Љ'.repeat(8));
