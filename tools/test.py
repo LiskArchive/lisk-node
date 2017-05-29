@@ -616,7 +616,6 @@ def RunProcess(context, timeout, args, **rest):
   pty_out = rest.pop('pty_out')
 
   process = subprocess.Popen(
-    shell = utils.IsWindows(),
     args = popen_args,
     **rest
   )
@@ -702,8 +701,13 @@ def Execute(args, context, timeout=None, env={}, faketty=False):
     fd_in = 0
     pty_out = None
 
-  # Extend environment
   env_copy = os.environ.copy()
+
+  # Remove NODE_PATH
+  if "NODE_PATH" in env_copy:
+    del env_copy["NODE_PATH"]
+
+  # Extend environment
   for key, value in env.iteritems():
     env_copy[key] = value
 
@@ -886,14 +890,12 @@ class Context(object):
     # http://code.google.com/p/gyp/issues/detail?id=40
     # It will put the builds into Release/node.exe or Debug/node.exe
     if utils.IsWindows():
-      out_dir = os.path.join(dirname(__file__), "..", "out")
-      if not exists(out_dir):
-        if mode == 'debug':
-          name = os.path.abspath('Debug/node.exe')
-        else:
-          name = os.path.abspath('Release/node.exe')
-      else:
-        name = os.path.abspath(name + '.exe')
+      if not exists(name + '.exe'):
+        name = name.replace('out/', '')
+      name = os.path.abspath(name + '.exe')
+
+    if not exists(name):
+      raise ValueError('Could not find executable. Should be ' + name)
 
     return name
 

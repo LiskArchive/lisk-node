@@ -26,7 +26,7 @@ const reply = 'I AM THE WALRUS'; // something recognizable
 let response = '';
 
 process.on('exit', function() {
-  assert.notEqual(response.indexOf(reply), -1);
+  assert.notStrictEqual(response.indexOf(reply), -1);
 });
 
 const server = tls.createServer(options, common.mustCall(function(conn) {
@@ -34,7 +34,7 @@ const server = tls.createServer(options, common.mustCall(function(conn) {
 }));
 
 server.listen(0, '127.0.0.1', function() {
-  var cmd = '"' + common.opensslCli + '" s_client -cipher ' + options.ciphers +
+  let cmd = '"' + common.opensslCli + '" s_client -cipher ' + options.ciphers +
             ` -connect 127.0.0.1:${this.address().port}`;
 
   // for the performance and stability issue in s_client on Windows

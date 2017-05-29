@@ -98,7 +98,7 @@ listener will be invoked _every time_ the named event is emitted.
 
 ```js
 const myEmitter = new MyEmitter();
-var m = 0;
+let m = 0;
 myEmitter.on('event', () => {
   console.log(++m);
 });
@@ -114,7 +114,7 @@ the listener is unregistered and *then* called.
 
 ```js
 const myEmitter = new MyEmitter();
-var m = 0;
+let m = 0;
 myEmitter.once('event', () => {
   console.log(++m);
 });
@@ -148,7 +148,7 @@ can be used. (_Note, however, that the `domain` module has been deprecated_)
 const myEmitter = new MyEmitter();
 
 process.on('uncaughtException', (err) => {
-  console.log('whoops! there was an error');
+  console.error('whoops! there was an error');
 });
 
 myEmitter.emit('error', new Error('whoops!'));
@@ -160,7 +160,7 @@ As a best practice, listeners should always be added for the `'error'` events.
 ```js
 const myEmitter = new MyEmitter();
 myEmitter.on('error', (err) => {
-  console.log('whoops! there was an error');
+  console.error('whoops! there was an error');
 });
 myEmitter.emit('error', new Error('whoops!'));
 // Prints: whoops! there was an error
@@ -491,7 +491,7 @@ Removes the specified `listener` from the listener array for the event named
 `eventName`.
 
 ```js
-var callback = (stream) => {
+const callback = (stream) => {
   console.log('someone connected!');
 };
 server.on('connection', callback);
@@ -513,12 +513,12 @@ events will behave as expected.
 ```js
 const myEmitter = new MyEmitter();
 
-var callbackA = () => {
+const callbackA = () => {
   console.log('A');
   myEmitter.removeListener('event', callbackB);
 };
 
-var callbackB = () => {
+const callbackB = () => {
   console.log('B');
 };
 

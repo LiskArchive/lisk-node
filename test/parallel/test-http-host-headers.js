@@ -6,10 +6,10 @@ const httpServer = http.createServer(reqHandler);
 
 function reqHandler(req, res) {
   if (req.url === '/setHostFalse5') {
-    assert.equal(req.headers.host, undefined);
+    assert.strictEqual(req.headers.host, undefined);
   } else {
-    assert.equal(req.headers.host, `localhost:${this.address().port}`,
-                 'Wrong host header for req[' + req.url + ']: ' +
+    assert.strictEqual(req.headers.host, `localhost:${this.address().port}`,
+                       'Wrong host header for req[' + req.url + ']: ' +
                  req.headers.host);
   }
   res.writeHead(200, {});
@@ -20,7 +20,7 @@ testHttp();
 
 function testHttp() {
 
-  var counter = 0;
+  let counter = 0;
 
   function cb(res) {
     counter--;

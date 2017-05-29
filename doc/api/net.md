@@ -66,7 +66,7 @@ Returns an object with `port`, `family`, and `address` properties:
 Example:
 
 ```js
-var server = net.createServer((socket) => {
+const server = net.createServer((socket) => {
   socket.end('goodbye\n');
 }).on('error', (err) => {
   // handle errors here
@@ -211,7 +211,7 @@ double-backslashes, such as:
 
 ```js
 net.createServer().listen(
-    path.join('\\\\?\\pipe', process.cwd(), 'myctl'))
+    path.join('\\\\?\\pipe', process.cwd(), 'myctl'));
 ```
 
 The parameter `backlog` behaves the same as in
@@ -334,7 +334,7 @@ Construct a new socket object.
 `fd` allows you to specify the existing file descriptor of socket.
 Set `readable` and/or `writable` to `true` to allow reads and/or writes on this
 socket (NOTE: Works only when `fd` is passed).
-About `allowHalfOpen`, refer to `createServer()` and `'end'` event.
+About `allowHalfOpen`, refer to [`net.createServer()`][] and [`'end'`][] event.
 
 `net.Socket` instances are [`EventEmitter`][] with the following events:
 
@@ -774,7 +774,8 @@ Passing `timeout` as an option will call [`socket.setTimeout()`][] after the soc
 The `connectListener` parameter will be added as a listener for the
 [`'connect'`][] event once.
 
-Here is an example of a client of the previously described echo server:
+Following is an example of a client of the echo server described
+in the [`net.createServer()`][] section:
 
 ```js
 const net = require('net');
@@ -874,8 +875,8 @@ server.listen(8124, () => {
 
 Test this by using `telnet`:
 
-```sh
-telnet localhost 8124
+```console
+$ telnet localhost 8124
 ```
 
 To listen on the socket `/tmp/echo.sock` the third line from the last would
@@ -889,8 +890,8 @@ server.listen('/tmp/echo.sock', () => {
 
 Use `nc` to connect to a UNIX domain socket server:
 
-```js
-nc -U /tmp/echo.sock
+```console
+$ nc -U /tmp/echo.sock
 ```
 
 ## net.isIP(input)
@@ -933,6 +934,7 @@ Returns true if input is a version 6 IP address, otherwise returns false.
 [`dns.lookup()` hints]: dns.html#dns_supported_getaddrinfo_flags
 [`end()`]: #net_socket_end_data_encoding
 [`EventEmitter`]: events.html#events_class_eventemitter
+[`net.createServer()`]: #net_net_createserver_options_connectionlistener
 [`net.Socket`]: #net_class_net_socket
 [`pause()`]: #net_socket_pause
 [`resume()`]: #net_socket_resume

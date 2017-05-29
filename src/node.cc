@@ -51,6 +51,7 @@
 #endif
 
 #include <errno.h>
+#include <fcntl.h>  // _O_RDWR
 #include <limits.h>  // PATH_MAX
 #include <locale.h>
 #include <signal.h>
@@ -2925,7 +2926,7 @@ static Local<Object> GetFeatures(Environment* env) {
   // TODO(bnoordhuis) ping libuv
   obj->Set(FIXED_ONE_BYTE_STRING(env->isolate(), "ipv6"), True(env->isolate()));
 
-#ifdef OPENSSL_NPN_NEGOTIATED
+#ifndef OPENSSL_NO_NEXTPROTONEG
   Local<Boolean> tls_npn = True(env->isolate());
 #else
   Local<Boolean> tls_npn = False(env->isolate());
@@ -4298,6 +4299,19 @@ inline void PlatformInit() {
     } while (min + 1 < max);
   }
 #endif  // __POSIX__
+#ifdef _WIN32
+  for (int fd = 0; fd <= 2; ++fd) {
+    auto handle = reinterpret_cast<HANDLE>(_get_osfhandle(fd));
+    if (handle == INVALID_HANDLE_VALUE ||
+        GetFileType(handle) == FILE_TYPE_UNKNOWN) {
+      // Ignore _close result. If it fails or not depends on used Windows
+      // version. We will just check _open result.
+      _close(fd);
+      if (fd != _open("nul", _O_RDWR))
+        ABORT();
+    }
+  }
+#endif  // _WIN32
 }
 
 

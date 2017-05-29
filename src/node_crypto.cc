@@ -147,7 +147,7 @@ template void SSLWrap<TLSWrap>::OnClientHello(
     void* arg,
     const ClientHelloParser::ClientHello& hello);
 
-#ifdef OPENSSL_NPN_NEGOTIATED
+#ifndef OPENSSL_NO_NEXTPROTONEG
 template int SSLWrap<TLSWrap>::AdvertiseNextProtoCallback(
     SSL* s,
     const unsigned char** data,
@@ -1309,11 +1309,11 @@ void SSLWrap<Base>::AddMethods(Environment* env, Local<FunctionTemplate> t) {
   env->SetProtoMethod(t, "setMaxSendFragment", SetMaxSendFragment);
 #endif  // SSL_set_max_send_fragment
 
-#ifdef OPENSSL_NPN_NEGOTIATED
+#ifndef OPENSSL_NO_NEXTPROTONEG
   env->SetProtoMethod(t, "getNegotiatedProtocol", GetNegotiatedProto);
-#endif  // OPENSSL_NPN_NEGOTIATED
+#endif  // OPENSSL_NO_NEXTPROTONEG
 
-#ifdef OPENSSL_NPN_NEGOTIATED
+#ifndef OPENSSL_NO_NEXTPROTONEG
   env->SetProtoMethod(t, "setNPNProtocols", SetNPNProtocols);
 #endif
 
@@ -1333,7 +1333,7 @@ void SSLWrap<Base>::AddMethods(Environment* env, Local<FunctionTemplate> t) {
 
 template <class Base>
 void SSLWrap<Base>::InitNPN(SecureContext* sc) {
-#ifdef OPENSSL_NPN_NEGOTIATED
+#ifndef OPENSSL_NO_NEXTPROTONEG
   // Server should advertise NPN protocols
   SSL_CTX_set_next_protos_advertised_cb(sc->ctx_,
                                         AdvertiseNextProtoCallback,
@@ -1341,7 +1341,7 @@ void SSLWrap<Base>::InitNPN(SecureContext* sc) {
   // Client should select protocol from list of advertised
   // If server supports NPN
   SSL_CTX_set_next_proto_select_cb(sc->ctx_, SelectNextProtoCallback, nullptr);
-#endif  // OPENSSL_NPN_NEGOTIATED
+#endif  // OPENSSL_NO_NEXTPROTONEG
 
 #ifdef NODE__HAVE_TLSEXT_STATUS_CB
   // OCSP stapling
@@ -2098,7 +2098,7 @@ void SSLWrap<Base>::GetProtocol(const FunctionCallbackInfo<Value>& args) {
 }
 
 
-#ifdef OPENSSL_NPN_NEGOTIATED
+#ifndef OPENSSL_NO_NEXTPROTONEG
 template <class Base>
 int SSLWrap<Base>::AdvertiseNextProtoCallback(SSL* s,
                                               const unsigned char** data,
@@ -2238,7 +2238,7 @@ void SSLWrap<Base>::SetNPNProtocols(const FunctionCallbackInfo<Value>& args) {
           env->npn_buffer_private_symbol(),
           args[0]).FromJust());
 }
-#endif  // OPENSSL_NPN_NEGOTIATED
+#endif  // OPENSSL_NO_NEXTPROTONEG
 
 #ifdef TLSEXT_TYPE_application_layer_protocol_negotiation
 template <class Base>
@@ -2769,7 +2769,9 @@ inline bool CertIsStartComOrWoSign(X509_NAME* name) {
     startcom_wosign_data = dn.data;
     startcom_wosign_name = d2i_X509_NAME(nullptr, &startcom_wosign_data,
                                          dn.len);
-    if (X509_NAME_cmp(name, startcom_wosign_name) == 0)
+    int cmp = X509_NAME_cmp(name, startcom_wosign_name);
+    X509_NAME_free(startcom_wosign_name);
+    if (cmp == 0)
       return true;
   }
 
@@ -2814,8 +2816,10 @@ inline CheckResult CheckWhitelistedServerCert(X509_STORE_CTX* ctx) {
   }
 
   X509* leaf_cert = sk_X509_value(chain, 0);
-  if (!CheckStartComOrWoSign(root_name, leaf_cert))
+  if (!CheckStartComOrWoSign(root_name, leaf_cert)) {
+    sk_X509_pop_free(chain, X509_free);
     return CHECK_CERT_REVOKED;
+  }
 
   // When the cert is issued from either CNNNIC ROOT CA or CNNNIC EV
   // ROOT CA, check a hash of its leaf cert if it is in the whitelist.
@@ -6024,7 +6028,6 @@ void SetFipsCrypto(const FunctionCallbackInfo<Value>& args) {
 #endif /* NODE_FIPS_MODE */
 }
 
-// FIXME(bnoordhuis) Handle global init correctly.
 void InitCrypto(Local<Object> target,
                 Local<Value> unused,
                 Local<Context> context,

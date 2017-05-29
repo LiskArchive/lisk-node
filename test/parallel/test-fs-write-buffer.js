@@ -20,10 +20,10 @@ fs.open(filename, 'w', 0o644, common.mustCall(function(err, fd) {
            common.mustCall(function(err, written) {
              if (err) throw err;
 
-             assert.equal(expected.length, written);
+             assert.strictEqual(expected.length, written);
              fs.closeSync(fd);
 
-             var found = fs.readFileSync(filename, 'utf8');
+             const found = fs.readFileSync(filename, 'utf8');
              assert.deepStrictEqual(expected.toString(), found);
              fs.unlinkSync(filename);
            }));
