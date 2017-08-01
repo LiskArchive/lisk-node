@@ -9,7 +9,7 @@ const err = new Stream();
 
 // ensure the Console instance doesn't write to the
 // process' "stdout" or "stderr" streams
-process.stdout.write = process.stderr.write = common.fail;
+process.stdout.write = process.stderr.write = common.mustNotCall();
 
 // make sure that the "Console" function exists
 assert.strictEqual('function', typeof Console);
@@ -29,7 +29,7 @@ assert.throws(() => {
 
 out.write = err.write = (d) => {};
 
-var c = new Console(out, err);
+const c = new Console(out, err);
 
 out.write = err.write = common.mustCall((d) => {
   assert.strictEqual(d, 'test\n');
@@ -57,3 +57,13 @@ out.write = common.mustCall((d) => {
 assert.doesNotThrow(() => {
   Console(out, err);
 });
+
+// Instance that does not ignore the stream errors.
+const c2 = new Console(out, err, false);
+
+out.write = () => { throw new Error('out'); };
+err.write = () => { throw new Error('err'); };
+
+assert.throws(() => c2.log('foo'), /^Error: out$/);
+assert.throws(() => c2.warn('foo'), /^Error: err$/);
+assert.throws(() => c2.dir('foo'), /^Error: out$/);

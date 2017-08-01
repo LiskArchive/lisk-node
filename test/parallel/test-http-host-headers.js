@@ -6,10 +6,10 @@ const httpServer = http.createServer(reqHandler);
 
 function reqHandler(req, res) {
   if (req.url === '/setHostFalse5') {
-    assert.equal(req.headers.host, undefined);
+    assert.strictEqual(req.headers.host, undefined);
   } else {
-    assert.equal(req.headers.host, `localhost:${this.address().port}`,
-                 'Wrong host header for req[' + req.url + ']: ' +
+    assert.strictEqual(req.headers.host, `localhost:${this.address().port}`,
+                       'Wrong host header for req[' + req.url + ']: ' +
                  req.headers.host);
   }
   res.writeHead(200, {});
@@ -20,7 +20,7 @@ testHttp();
 
 function testHttp() {
 
-  var counter = 0;
+  let counter = 0;
 
   function cb(res) {
     counter--;
@@ -38,7 +38,7 @@ function testHttp() {
       host: 'localhost',
       port: httpServer.address().port,
       rejectUnauthorized: false
-    }, cb).on('error', common.fail);
+    }, cb).on('error', common.mustNotCall());
 
     http.request({
       method: 'GET',
@@ -46,7 +46,7 @@ function testHttp() {
       host: 'localhost',
       port: httpServer.address().port,
       rejectUnauthorized: false
-    }, cb).on('error', common.fail).end();
+    }, cb).on('error', common.mustNotCall()).end();
 
     http.request({
       method: 'POST',
@@ -54,7 +54,7 @@ function testHttp() {
       host: 'localhost',
       port: httpServer.address().port,
       rejectUnauthorized: false
-    }, cb).on('error', common.fail).end();
+    }, cb).on('error', common.mustNotCall()).end();
 
     http.request({
       method: 'PUT',
@@ -62,7 +62,7 @@ function testHttp() {
       host: 'localhost',
       port: httpServer.address().port,
       rejectUnauthorized: false
-    }, cb).on('error', common.fail).end();
+    }, cb).on('error', common.mustNotCall()).end();
 
     http.request({
       method: 'DELETE',
@@ -70,6 +70,6 @@ function testHttp() {
       host: 'localhost',
       port: httpServer.address().port,
       rejectUnauthorized: false
-    }, cb).on('error', common.fail).end();
+    }, cb).on('error', common.mustNotCall()).end();
   });
 }

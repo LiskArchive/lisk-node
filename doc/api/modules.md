@@ -1,6 +1,6 @@
 # Modules
 
-> Stability: 3 - Locked
+> Stability: 2 - Stable
 
 <!--name=module-->
 
@@ -20,7 +20,7 @@ directory as `foo.js`.
 Here are the contents of `circle.js`:
 
 ```js
-const PI = Math.PI;
+const { PI } = Math;
 
 exports.area = (r) => PI * r * r;
 
@@ -44,7 +44,7 @@ Below, `bar.js` makes use of the `square` module, which exports a constructor:
 
 ```js
 const square = require('./square.js');
-var mySquare = square(2);
+const mySquare = square(2);
 console.log(`The area of my square is ${mySquare.area()}`);
 ```
 
@@ -56,10 +56,10 @@ module.exports = (width) => {
   return {
     area: () => width * width
   };
-}
+};
 ```
 
-The module system is implemented in the `require("module")` module.
+The module system is implemented in the `require('module')` module.
 
 ## Accessing the main module
 
@@ -142,18 +142,20 @@ To get the exact filename that will be loaded when `require()` is called, use
 the `require.resolve()` function.
 
 Putting together all of the above, here is the high-level algorithm
-in pseudocode of what require.resolve does:
+in pseudocode of what `require.resolve()` does:
 
 ```txt
 require(X) from module at path Y
 1. If X is a core module,
    a. return the core module
    b. STOP
-2. If X begins with './' or '/' or '../'
+2. If X begins with '/'
+   a. set Y to be the filesystem root
+3. If X begins with './' or '/' or '../'
    a. LOAD_AS_FILE(Y + X)
    b. LOAD_AS_DIRECTORY(Y + X)
-3. LOAD_NODE_MODULES(X, dirname(Y))
-4. THROW "not found"
+4. LOAD_NODE_MODULES(X, dirname(Y))
+5. THROW "not found"
 
 LOAD_AS_FILE(X)
 1. If X is a file, load X as JavaScript text.  STOP
@@ -161,14 +163,18 @@ LOAD_AS_FILE(X)
 3. If X.json is a file, parse X.json to a JavaScript Object.  STOP
 4. If X.node is a file, load X.node as binary addon.  STOP
 
+LOAD_INDEX(X)
+1. If X/index.js is a file, load X/index.js as JavaScript text.  STOP
+2. If X/index.json is a file, parse X/index.json to a JavaScript object. STOP
+3. If X/index.node is a file, load X/index.node as binary addon.  STOP
+
 LOAD_AS_DIRECTORY(X)
 1. If X/package.json is a file,
    a. Parse X/package.json, and look for "main" field.
    b. let M = X + (json main field)
    c. LOAD_AS_FILE(M)
-2. If X/index.js is a file, load X/index.js as JavaScript text.  STOP
-3. If X/index.json is a file, parse X/index.json to a JavaScript object. STOP
-4. If X/index.node is a file, load X/index.node as binary addon.  STOP
+   d. LOAD_INDEX(M)
+2. LOAD_INDEX(X)
 
 LOAD_NODE_MODULES(X, START)
 1. let DIRS=NODE_MODULES_PATHS(START)
@@ -559,16 +565,16 @@ To illustrate the behavior, imagine this hypothetical implementation of
 `require()`, which is quite similar to what is actually done by `require()`:
 
 ```js
-function require(...) {
-  var module = { exports: {} };
+function require(/* ... */) {
+  const module = { exports: {} };
   ((module, exports) => {
     // Your module code here. In this example, define a function.
-    function some_func() {};
-    exports = some_func;
+    function someFunc() {}
+    exports = someFunc;
     // At this point, exports is no longer a shortcut to module.exports, and
     // this module will still export an empty default object.
-    module.exports = some_func;
-    // At this point, the module will now export some_func, instead of the
+    module.exports = someFunc;
+    // At this point, the module will now export someFunc, instead of the
     // default object.
   })(module, module.exports);
   return module.exports;

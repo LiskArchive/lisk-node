@@ -46,9 +46,8 @@ if (!id) {
 
 
   a.on('message', common.mustCall((m) => {
-    if (typeof m === 'object') return;
-    assert.strictEqual(m, 'READY');
-    b.send('START');
+    assert.strictEqual(m.msg, 'READY');
+    b.send({msg: 'START', port: m.port});
   }));
 
   b.on('message', common.mustCall((m) => {
@@ -60,8 +59,9 @@ if (!id) {
 } else if (id === 'one') {
   if (cluster.isMaster) return startWorker();
 
-  http.createServer(common.fail).listen(common.PORT, common.mustCall(() => {
-    process.send('READY');
+  const server = http.createServer(common.mustNotCall());
+  server.listen(0, common.mustCall(() => {
+    process.send({msg: 'READY', port: server.address().port});
   }));
 
   process.on('message', common.mustCall((m) => {
@@ -70,11 +70,11 @@ if (!id) {
 } else if (id === 'two') {
   if (cluster.isMaster) return startWorker();
 
-  const server = http.createServer(common.fail);
+  const server = http.createServer(common.mustNotCall());
   process.on('message', common.mustCall((m) => {
     if (m === 'QUIT') process.exit();
-    assert.strictEqual(m, 'START');
-    server.listen(common.PORT, common.fail);
+    assert.strictEqual(m.msg, 'START');
+    server.listen(m.port, common.mustNotCall());
     server.on('error', common.mustCall((e) => {
       assert.strictEqual(e.code, 'EADDRINUSE');
       process.send(e.code);

@@ -290,7 +290,7 @@ too many listeners have been added to an event
 
 ```txt
 $ node
-> event.defaultMaxListeners = 1;
+> events.defaultMaxListeners = 1;
 > process.on('foo', () => {});
 > process.on('foo', () => {});
 > (node:38638) Warning: Possible EventEmitter memory leak detected. 2 foo
@@ -303,7 +303,7 @@ adds a custom handler to the `'warning'` event:
 ```txt
 $ node --no-warnings
 > var p = process.on('warning', (warning) => console.warn('Do not do that!'));
-> event.defaultMaxListeners = 1;
+> events.defaultMaxListeners = 1;
 > process.on('foo', () => {});
 > process.on('foo', () => {});
 > Do not do that!
@@ -1257,9 +1257,12 @@ function maybeSync(arg, cb) {
 This API is hazardous because in the following case:
 
 ```js
-maybeSync(true, () => {
+const maybeTrue = Math.random() > 0.5;
+
+maybeSync(maybeTrue, () => {
   foo();
 });
+
 bar();
 ```
 
@@ -1512,8 +1515,10 @@ Android)
 
 * {Stream}
 
-The `process.stderr` property returns a [Writable][] stream connected to
-`stderr` (fd `2`).
+The `process.stderr` property returns a stream connected to
+`stderr` (fd `2`). It is a [`net.Socket`][] (which is a [Duplex][]
+stream) unless fd `2` refers to a file, in which case it is
+a [Writable][] stream.
 
 Note: `process.stderr` differs from other Node.js streams in important ways,
 see [note on process I/O][] for more information.
@@ -1522,8 +1527,10 @@ see [note on process I/O][] for more information.
 
 * {Stream}
 
-The `process.stdin` property returns a [Readable][] stream equivalent to or
-associated with `stdin` (fd `0`).
+The `process.stdin` property returns a stream connected to
+`stdin` (fd `0`). It is a [`net.Socket`][] (which is a [Duplex][]
+stream) unless fd `0` refers to a file, in which case it is
+a [Readable][] stream.
 
 For example:
 
@@ -1542,7 +1549,7 @@ process.stdin.on('end', () => {
 });
 ```
 
-As a [Readable][] stream, `process.stdin` can also be used in "old" mode that
+As a [Duplex][] stream, `process.stdin` can also be used in "old" mode that
 is compatible with scripts written for Node.js prior to v0.10.
 For more information see [Stream compatibility][].
 
@@ -1554,8 +1561,10 @@ must call `process.stdin.resume()` to read from it. Note also that calling
 
 * {Stream}
 
-The `process.stdout` property returns a [Writable][] stream connected to
-`stdout` (fd `2`).
+The `process.stdout` property returns a stream connected to
+`stdout` (fd `1`). It is a [`net.Socket`][] (which is a [Duplex][]
+stream) unless fd `1` refers to a file, in which case it is
+a [Writable][] stream.
 
 For example, to copy process.stdin to process.stdout:
 
@@ -1585,7 +1594,7 @@ These behaviours are partly for historical reasons, as changing them would
 create backwards incompatibility, but they are also expected by some users.
 
 Synchronous writes avoid problems such as output written with `console.log()` or
-`console.write()` being unexpectedly interleaved, or not written at all if
+`console.error()` being unexpectedly interleaved, or not written at all if
 `process.exit()` is called before an asynchronous write completes. See
 [`process.exit()`][] for more information.
 
@@ -1628,12 +1637,12 @@ the current value of `ps`.
 
 *Note*: When a new value is assigned, different platforms will impose different
 maximum length restrictions on the title. Usually such restrictions are quite
-limited. For instance, on Linux and OS X, `process.title` is limited to the size
-of the binary name plus the length of the command line arguments because setting
-the `process.title` overwrites the `argv` memory of the process. Node.js v0.8
-allowed for longer process title strings by also overwriting the `environ`
-memory but that was potentially insecure and confusing in some (rather obscure)
-cases.
+limited. For instance, on Linux and macOS, `process.title` is limited to the
+size of the binary name plus the length of the command line arguments because
+setting the `process.title` overwrites the `argv` memory of the process.
+Node.js v0.8 allowed for longer process title strings by also overwriting the
+`environ` memory but that was potentially insecure and confusing in some
+(rather obscure) cases.
 
 ## process.umask([mask])
 <!-- YAML
@@ -1771,6 +1780,8 @@ cases:
 [`Error`]: errors.html#errors_class_error
 [`EventEmitter`]: events.html#events_class_eventemitter
 [`JSON.stringify()`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/JSON/stringify
+[`console.error()`]: console.html#console_console_error_data_args
+[`console.log()`]: console.html#console_console_log_data_args
 [`net.Server`]: net.html#net_class_net_server
 [`net.Socket`]: net.html#net_class_net_socket
 [`process.argv`]: #process_process_argv
@@ -1788,6 +1799,7 @@ cases:
 [TTY]: tty.html#tty_tty
 [Writable]: stream.html#stream_writable_streams
 [Readable]: stream.html#stream_readable_streams
+[Duplex]: stream.html#stream_duplex_and_transform_streams
 [Child Process]: child_process.html
 [Cluster]: cluster.html
 [`process.exitCode`]: #process_process_exitcode

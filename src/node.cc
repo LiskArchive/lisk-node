@@ -51,6 +51,7 @@
 #endif
 
 #include <errno.h>
+#include <fcntl.h>  // _O_RDWR
 #include <limits.h>  // PATH_MAX
 #include <locale.h>
 #include <signal.h>
@@ -61,6 +62,7 @@
 
 #include <string>
 #include <vector>
+#include <list>
 
 #if defined(NODE_HAVE_I18N_SUPPORT)
 #include <unicode/uvernum.h>
@@ -165,19 +167,27 @@ static node_module* modlist_addon;
 
 #if defined(NODE_HAVE_I18N_SUPPORT)
 // Path to ICU data (for i18n / Intl)
-static const char* icu_data_dir = nullptr;
+static std::string icu_data_dir;  // NOLINT(runtime/string)
 #endif
 
 // used by C++ modules as well
 bool no_deprecation = false;
 
 #if HAVE_OPENSSL
+// use OpenSSL's cert store instead of bundled certs
+bool ssl_openssl_cert_store =
+#if defined(NODE_OPENSSL_CERT_STORE)
+        true;
+#else
+        false;
+#endif
+
 # if NODE_FIPS_MODE
 // used by crypto module
 bool enable_fips_crypto = false;
 bool force_fips_crypto = false;
 # endif  // NODE_FIPS_MODE
-const char* openssl_config = nullptr;
+std::string openssl_config;  // NOLINT(runtime/string)
 #endif  // HAVE_OPENSSL
 
 // true if process warnings should be suppressed
@@ -928,8 +938,6 @@ Local<Value> UVException(Isolate* isolate,
 
   Local<Object> e = Exception::Error(js_msg)->ToObject(isolate);
 
-  // TODO(piscisaureus) errno should probably go; the user has no way of
-  // knowing which uv errno value maps to which error.
   e->Set(env->errno_string(), Integer::New(isolate, errorno));
   e->Set(env->code_string(), js_code);
   e->Set(env->syscall_string(), js_syscall);
@@ -943,12 +951,21 @@ Local<Value> UVException(Isolate* isolate,
 
 
 // Look up environment variable unless running as setuid root.
-inline const char* secure_getenv(const char* key) {
+bool SafeGetenv(const char* key, std::string* text) {
 #ifndef _WIN32
-  if (getuid() != geteuid() || getgid() != getegid())
-    return nullptr;
+  // TODO(bnoordhuis) Should perhaps also check whether getauxval(AT_SECURE)
+  // is non-zero on Linux.
+  if (getuid() != geteuid() || getgid() != getegid()) {
+    text->clear();
+    return false;
+  }
 #endif
-  return getenv(key);
+  if (const char* value = getenv(key)) {
+    *text = value;
+    return true;
+  }
+  text->clear();
+  return false;
 }
 
 
@@ -1316,6 +1333,7 @@ Local<Value> MakeCallback(Environment* env,
 
   if (tick_info->length() == 0) {
     tick_info->set_index(0);
+    return ret;
   }
 
   if (env->tick_callback_function()->Call(process, 0, nullptr).IsEmpty()) {
@@ -1480,6 +1498,8 @@ enum encoding ParseEncoding(const char* encoding,
 enum encoding ParseEncoding(Isolate* isolate,
                             Local<Value> encoding_v,
                             enum encoding default_encoding) {
+  CHECK(!encoding_v.IsEmpty());
+
   if (!encoding_v->IsString())
     return default_encoding;
 
@@ -2925,7 +2945,7 @@ static Local<Object> GetFeatures(Environment* env) {
   // TODO(bnoordhuis) ping libuv
   obj->Set(FIXED_ONE_BYTE_STRING(env->isolate(), "ipv6"), True(env->isolate()));
 
-#ifdef OPENSSL_NPN_NEGOTIATED
+#ifndef OPENSSL_NO_NEXTPROTONEG
   Local<Boolean> tls_npn = True(env->isolate());
 #else
   Local<Boolean> tls_npn = False(env->isolate());
@@ -3131,11 +3151,11 @@ void SetupProcessObject(Environment* env,
                     "icu",
                     OneByteString(env->isolate(), U_ICU_VERSION));
 
-  if (icu_data_dir != nullptr) {
+  if (!icu_data_dir.empty()) {
     // Did the user attempt (via env var or parameter) to set an ICU path?
     READONLY_PROPERTY(process,
                       "icu_data_dir",
-                      OneByteString(env->isolate(), icu_data_dir));
+                      OneByteString(env->isolate(), icu_data_dir.c_str()));
   }
 #endif
 
@@ -3671,13 +3691,24 @@ static void PrintHelp() {
          "  --v8-options          print v8 command line options\n"
          "  --v8-pool-size=num    set v8's thread pool size\n"
 #if HAVE_OPENSSL
-         "  --tls-cipher-list=val use an alternative default TLS cipher list\n"
+         "  --tls-cipher-list=val    use an alternative default TLS cipher "
+         "list\n"
+         "  --use-bundled-ca         use bundled CA store"
+#if !defined(NODE_OPENSSL_CERT_STORE)
+         " (default)"
+#endif
+         "\n"
+         "  --use-openssl-ca         use OpenSSL's default CA store"
+#if defined(NODE_OPENSSL_CERT_STORE)
+         " (default)"
+#endif
+         "\n"
 #if NODE_FIPS_MODE
          "  --enable-fips         enable FIPS crypto at startup\n"
          "  --force-fips          force FIPS crypto (cannot be disabled)\n"
 #endif  /* NODE_FIPS_MODE */
          "  --openssl-config=path load OpenSSL configuration file from the\n"
-         "                        specified path\n"
+         "                        specified file (overrides OPENSSL_CONF)\n"
 #endif /* HAVE_OPENSSL */
 #if defined(NODE_HAVE_I18N_SUPPORT)
          "  --icu-data-dir=dir    set ICU data load path to dir\n"
@@ -3712,6 +3743,7 @@ static void PrintHelp() {
 #endif
          "                        prefixed to the module search path\n"
          "NODE_REPL_HISTORY       path to the persistent REPL history file\n"
+         "OPENSSL_CONF            load OpenSSL configuration from file\n"
          "\n"
          "Documentation can be found at https://nodejs.org/\n");
 }
@@ -3839,6 +3871,10 @@ static void ParseArgs(int* argc,
 #if HAVE_OPENSSL
     } else if (strncmp(arg, "--tls-cipher-list=", 18) == 0) {
       default_cipher_list = arg + 18;
+    } else if (strncmp(arg, "--use-openssl-ca", 16) == 0) {
+      ssl_openssl_cert_store = true;
+    } else if (strncmp(arg, "--use-bundled-ca", 16) == 0) {
+      ssl_openssl_cert_store = false;
 #if NODE_FIPS_MODE
     } else if (strcmp(arg, "--enable-fips") == 0) {
       enable_fips_crypto = true;
@@ -3846,15 +3882,18 @@ static void ParseArgs(int* argc,
       force_fips_crypto = true;
 #endif /* NODE_FIPS_MODE */
     } else if (strncmp(arg, "--openssl-config=", 17) == 0) {
-      openssl_config = arg + 17;
+      openssl_config.assign(arg + 17);
 #endif /* HAVE_OPENSSL */
 #if defined(NODE_HAVE_I18N_SUPPORT)
     } else if (strncmp(arg, "--icu-data-dir=", 15) == 0) {
-      icu_data_dir = arg + 15;
+      icu_data_dir.assign(arg + 15);
 #endif
     } else if (strcmp(arg, "--expose-internals") == 0 ||
                strcmp(arg, "--expose_internals") == 0) {
       // consumed in js
+    } else if (strcmp(arg, "--") == 0) {
+      index += 1;
+      break;
     } else {
       // V8 option.  Pass through as-is.
       new_v8_argv[new_v8_argc] = arg;
@@ -4298,6 +4337,19 @@ inline void PlatformInit() {
     } while (min + 1 < max);
   }
 #endif  // __POSIX__
+#ifdef _WIN32
+  for (int fd = 0; fd <= 2; ++fd) {
+    auto handle = reinterpret_cast<HANDLE>(_get_osfhandle(fd));
+    if (handle == INVALID_HANDLE_VALUE ||
+        GetFileType(handle) == FILE_TYPE_UNKNOWN) {
+      // Ignore _close result. If it fails or not depends on used Windows
+      // version. We will just check _open result.
+      _close(fd);
+      if (fd != _open("nul", _O_RDWR))
+        ABORT();
+    }
+  }
+#endif  // _WIN32
 }
 
 
@@ -4325,6 +4377,9 @@ void Init(int* argc,
   V8::SetFlagsFromString(NODE_V8_OPTIONS, sizeof(NODE_V8_OPTIONS) - 1);
 #endif
 
+  if (openssl_config.empty())
+    SafeGetenv("OPENSSL_CONF", &openssl_config);
+
   // Parse a few arguments which are specific to Node.
   int v8_argc;
   const char** v8_argv;
@@ -4351,12 +4406,11 @@ void Init(int* argc,
 #endif
 
 #if defined(NODE_HAVE_I18N_SUPPORT)
-  if (icu_data_dir == nullptr) {
-    // if the parameter isn't given, use the env variable.
-    icu_data_dir = secure_getenv("NODE_ICU_DATA");
-  }
+  // If the parameter isn't given, use the env variable.
+  if (icu_data_dir.empty())
+    SafeGetenv("NODE_ICU_DATA", &icu_data_dir);
   // Initialize ICU.
-  // If icu_data_dir is nullptr here, it will load the 'minimal' data.
+  // If icu_data_dir is empty here, it will load the 'minimal' data.
   if (!i18n::InitializeICUDirectory(icu_data_dir)) {
     FatalError(nullptr, "Could not initialize ICU "
                      "(check NODE_ICU_DATA or --icu-data-dir parameters)");
@@ -4396,34 +4450,24 @@ void Init(int* argc,
 
 
 struct AtExitCallback {
-  AtExitCallback* next_;
   void (*cb_)(void* arg);
   void* arg_;
 };
 
-static AtExitCallback* at_exit_functions_;
+static std::list<AtExitCallback> at_exit_functions;
 
 
 // TODO(bnoordhuis) Turn into per-context event.
 void RunAtExit(Environment* env) {
-  AtExitCallback* p = at_exit_functions_;
-  at_exit_functions_ = nullptr;
-
-  while (p) {
-    AtExitCallback* q = p->next_;
-    p->cb_(p->arg_);
-    delete p;
-    p = q;
+  for (AtExitCallback at_exit : at_exit_functions) {
+    at_exit.cb_(at_exit.arg_);
   }
+  at_exit_functions.clear();
 }
 
 
 void AtExit(void (*cb)(void* arg), void* arg) {
-  AtExitCallback* p = new AtExitCallback;
-  p->cb_ = cb;
-  p->arg_ = arg;
-  p->next_ = at_exit_functions_;
-  at_exit_functions_ = p;
+  at_exit_functions.push_back(AtExitCallback{cb, arg});
 }
 
 
@@ -4707,8 +4751,11 @@ int Start(int argc, char** argv) {
   Init(&argc, const_cast<const char**>(argv), &exec_argc, &exec_argv);
 
 #if HAVE_OPENSSL
-  if (const char* extra = secure_getenv("NODE_EXTRA_CA_CERTS"))
-    crypto::UseExtraCaCerts(extra);
+  {
+    std::string extra_ca_certs;
+    if (SafeGetenv("NODE_EXTRA_CA_CERTS", &extra_ca_certs))
+      crypto::UseExtraCaCerts(extra_ca_certs);
+  }
 #ifdef NODE_FIPS_MODE
   // In the case of FIPS builds we should make sure
   // the random source is properly initialized first.
@@ -4717,7 +4764,7 @@ int Start(int argc, char** argv) {
   // V8 on Windows doesn't have a good source of entropy. Seed it from
   // OpenSSL's pool.
   V8::SetEntropySource(crypto::EntropySource);
-#endif
+#endif  // HAVE_OPENSSL
 
   v8_platform.Initialize(v8_thread_pool_size);
   V8::Initialize();

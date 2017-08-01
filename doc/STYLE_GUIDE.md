@@ -39,7 +39,7 @@
 * When documenting APIs, note the version the API was introduced in at
   the end of the section. If an API has been deprecated, also note the first
   version that the API appeared deprecated in.
-* When using dashes, use emdashes ("—", Ctrl+Alt+"-" on OSX) surrounded by
+* When using dashes, use emdashes ("—", Ctrl+Alt+"-" on macOS) surrounded by
   spaces, per the New York Times usage.
 * Including assets:
   * If you wish to add an illustration or full program, add it to the
@@ -57,7 +57,7 @@
 * When using underscores, asterisks and backticks please use proper escaping (**\\\_**, **\\\*** and **\\\`** instead of **\_**, **\*** and **\`**)
 * References to constructor functions should use PascalCase
 * References to constructor instances should be camelCased
-* References to methods should be used with parenthesis: `socket.end()` instead of `socket.end`
+* References to methods should be used with parentheses: `socket.end()` instead of `socket.end`
 
 [plugin]: http://editorconfig.org/#download
 [Oxford comma]: https://en.wikipedia.org/wiki/Serial_comma

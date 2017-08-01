@@ -7,7 +7,7 @@ if (cluster.isWorker) {
   const http = require('http');
   http.Server(() => {
 
-  }).listen(common.PORT, '127.0.0.1');
+  }).listen(0, '127.0.0.1');
   const worker = cluster.worker;
   assert.strictEqual(worker.exitedAfterDisconnect, worker.suicide);
 
@@ -40,7 +40,8 @@ if (cluster.isWorker) {
 
   // Disconnect worker when it is ready
   worker.once('listening', common.mustCall(() => {
-    worker.disconnect();
+    const w = worker.disconnect();
+    assert.strictEqual(worker, w, 'did not return a reference');
   }));
 
   // Check cluster events

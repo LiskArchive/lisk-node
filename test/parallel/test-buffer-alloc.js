@@ -462,6 +462,10 @@ assert.strictEqual(
 // Regression test for https://github.com/nodejs/node/issues/3496.
 assert.strictEqual(Buffer.from('=bad'.repeat(1e4), 'base64').length, 0);
 
+// Regression test for https://github.com/nodejs/node/issues/11987.
+assert.deepStrictEqual(Buffer.from('w0  ', 'base64'),
+                       Buffer.from('w0', 'base64'));
+
 {
   // Creating buffers larger than pool size.
   const l = Buffer.poolSize + 5;
@@ -742,7 +746,7 @@ assert.strictEqual('<Buffer 81 a3 66 6f 6f a3 62 61 72>', x.inspect());
 Buffer.allocUnsafe(3.3).fill().toString();
   // throws bad argument error in commit 43cb4ec
 Buffer.alloc(3.3).fill().toString();
-assert.equal(Buffer.allocUnsafe(-1).length, 0);
+assert.strictEqual(Buffer.allocUnsafe(-1).length, 0);
 assert.strictEqual(Buffer.allocUnsafe(NaN).length, 0);
 assert.strictEqual(Buffer.allocUnsafe(3.3).length, 3);
 assert.strictEqual(Buffer.from({length: 3.3}).length, 3);
@@ -779,7 +783,7 @@ Buffer.from(Buffer.allocUnsafe(0), 0, 0);
   'ucs-2',
   'utf16le',
   'utf-16le' ].forEach(function(enc) {
-    assert.equal(Buffer.isEncoding(enc), true);
+    assert.strictEqual(Buffer.isEncoding(enc), true);
   });
 
 [ 'utf9',
@@ -794,7 +798,7 @@ Buffer.from(Buffer.allocUnsafe(0), 0, 0);
   1,
   0,
   -1 ].forEach(function(enc) {
-    assert.equal(Buffer.isEncoding(enc), false);
+    assert.strictEqual(Buffer.isEncoding(enc), false);
   });
 
 // GH-5110

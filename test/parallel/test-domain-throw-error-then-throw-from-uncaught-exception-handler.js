@@ -73,16 +73,16 @@ function runTestWithAbortOnUncaughtException() {
   child_process.exec(createTestCmdLine({
     withAbortOnUncaughtException: true
   }), function onTestDone(err, stdout, stderr) {
-    assert.notEqual(err.code, RAN_UNCAUGHT_EXCEPTION_HANDLER_EXIT_CODE,
-                    'child process should not have run its uncaughtException ' +
-                    'event handler');
+    assert.notStrictEqual(err.code, RAN_UNCAUGHT_EXCEPTION_HANDLER_EXIT_CODE,
+                          'child process should not have run its ' +
+                          'uncaughtException event handler');
     assert(common.nodeProcessAborted(err.code, err.signal),
            'process should have aborted, but did not');
   });
 }
 
 function createTestCmdLine(options) {
-  var testCmd = '';
+  let testCmd = '';
 
   if (!common.isWindows) {
     // Do not create core files, as it can take a lot of disk space on
@@ -93,11 +93,10 @@ function createTestCmdLine(options) {
   testCmd += process.argv[0];
 
   if (options && options.withAbortOnUncaughtException) {
-    testCmd += ' ' + '--abort-on-uncaught-exception';
+    testCmd += ' --abort-on-uncaught-exception';
   }
 
-  testCmd += ' ' + process.argv[1];
-  testCmd += ' ' + 'child';
+  testCmd += ` ${process.argv[1]} child`;
 
   return testCmd;
 }

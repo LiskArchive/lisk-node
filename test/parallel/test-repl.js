@@ -1,4 +1,5 @@
-/* eslint-disable max-len, strict */
+'use strict';
+
 const common = require('../common');
 const assert = require('assert');
 
@@ -166,18 +167,32 @@ function error_test() {
     { client: client_unix, send: 'new RegExp("foo", "wrong modifier");',
       expect: /\bSyntaxError: Invalid flags supplied to RegExp constructor/ },
     // strict mode syntax errors should be caught (GH-5178)
-    { client: client_unix, send: '(function() { "use strict"; return 0755; })()',
+    { client: client_unix,
+      send: '(function() { "use strict"; return 0755; })()',
       expect: /\bSyntaxError: Octal literals are not allowed in strict mode/ },
-    { client: client_unix, send: '(function(a, a, b) { "use strict"; return a + b + c; })()',
-      expect: /\bSyntaxError: Duplicate parameter name not allowed in this context/ },
-    { client: client_unix, send: '(function() { "use strict"; with (this) {} })()',
-      expect: /\bSyntaxError: Strict mode code may not include a with statement/ },
-    { client: client_unix, send: '(function() { "use strict"; var x; delete x; })()',
-      expect: /\bSyntaxError: Delete of an unqualified identifier in strict mode/ },
-    { client: client_unix, send: '(function() { "use strict"; eval = 17; })()',
+    {
+      client: client_unix,
+      send: '(function(a, a, b) { "use strict"; return a + b + c; })()',
+      expect: /\bSyntaxError: Duplicate parameter name not allowed in this context/ // eslint-disable-line max-len
+    },
+    {
+      client: client_unix,
+      send: '(function() { "use strict"; with (this) {} })()',
+      expect: /\bSyntaxError: Strict mode code may not include a with statement/
+    },
+    {
+      client: client_unix,
+      send: '(function() { "use strict"; var x; delete x; })()',
+      expect: /\bSyntaxError: Delete of an unqualified identifier in strict mode/ // eslint-disable-line max-len
+    },
+    { client: client_unix,
+      send: '(function() { "use strict"; eval = 17; })()',
       expect: /\bSyntaxError: Unexpected eval or arguments in strict mode/ },
-    { client: client_unix, send: '(function() { "use strict"; if (true) function f() { } })()',
-      expect: /\bSyntaxError: In strict mode code, functions can only be declared at top level or inside a block./ },
+    {
+      client: client_unix,
+      send: '(function() { "use strict"; if (true) function f() { } })()',
+      expect: /\bSyntaxError: In strict mode code, functions can only be declared at top level or inside a block./ // eslint-disable-line max-len
+    },
     // Named functions can be used:
     { client: client_unix, send: 'function blah() { return 1; }',
       expect: prompt_unix },
@@ -310,16 +325,20 @@ function error_test() {
     { client: client_unix, send: 'require("internal/repl")',
       expect: /^Error: Cannot find module 'internal\/repl'/ },
     // REPL should handle quotes within regexp literal in multiline mode
-    { client: client_unix, send: "function x(s) {\nreturn s.replace(/'/,'');\n}",
+    { client: client_unix,
+      send: "function x(s) {\nreturn s.replace(/'/,'');\n}",
       expect: prompt_multiline + prompt_multiline +
             'undefined\n' + prompt_unix },
-    { client: client_unix, send: "function x(s) {\nreturn s.replace(/'/,'');\n}",
+    { client: client_unix,
+      send: "function x(s) {\nreturn s.replace(/'/,'');\n}",
       expect: prompt_multiline + prompt_multiline +
             'undefined\n' + prompt_unix },
-    { client: client_unix, send: 'function x(s) {\nreturn s.replace(/"/,"");\n}',
+    { client: client_unix,
+      send: 'function x(s) {\nreturn s.replace(/"/,"");\n}',
       expect: prompt_multiline + prompt_multiline +
             'undefined\n' + prompt_unix },
-    { client: client_unix, send: 'function x(s) {\nreturn s.replace(/.*/,"");\n}',
+    { client: client_unix,
+      send: 'function x(s) {\nreturn s.replace(/.*/,"");\n}',
       expect: prompt_multiline + prompt_multiline +
             'undefined\n' + prompt_unix },
     { client: client_unix, send: '{ var x = 4; }',
@@ -354,14 +373,20 @@ function error_test() {
       expect: '{ value: undefined, done: true }' },
 
     // https://github.com/nodejs/node/issues/9300
-    { client: client_unix, send: 'function foo() {\nvar bar = 1 / 1; // "/"\n}',
-      expect: prompt_multiline + prompt_multiline + 'undefined\n' + prompt_unix },
+    {
+      client: client_unix, send: 'function foo() {\nvar bar = 1 / 1; // "/"\n}',
+      expect: `${prompt_multiline}${prompt_multiline}undefined\n${prompt_unix}`
+    },
 
-    { client: client_unix, send: '(function() {\nreturn /foo/ / /bar/;\n}())',
-      expect: prompt_multiline + prompt_multiline + 'NaN\n' + prompt_unix },
+    {
+      client: client_unix, send: '(function() {\nreturn /foo/ / /bar/;\n}())',
+      expect: prompt_multiline + prompt_multiline + 'NaN\n' + prompt_unix
+    },
 
-    { client: client_unix, send: '(function() {\nif (false) {} /bar"/;\n}())',
-      expect: prompt_multiline + prompt_multiline + 'undefined\n' + prompt_unix }
+    {
+      client: client_unix, send: '(function() {\nif (false) {} /bar"/;\n}())',
+      expect: prompt_multiline + prompt_multiline + 'undefined\n' + prompt_unix
+    }
   ]);
 }
 
@@ -389,12 +414,12 @@ function tcp_test() {
         { client: client_tcp, send: '',
           expect: prompt_tcp },
         { client: client_tcp, send: 'invoke_me(333)',
-          expect: ('\'' + 'invoked 333' + '\'\n' + prompt_tcp) },
+          expect: (`'invoked 333'\n${prompt_tcp}`) },
         { client: client_tcp, send: 'a += 1',
-          expect: ('12346' + '\n' + prompt_tcp) },
+          expect: (`12346\n${prompt_tcp}`) },
         { client: client_tcp,
           send: 'require(' + JSON.stringify(moduleFilename) + ').number',
-          expect: ('42' + '\n' + prompt_tcp) }
+          expect: (`42\n${prompt_tcp}`) }
       ]);
     });
 
@@ -458,13 +483,13 @@ function unix_test() {
         { client: client_unix, send: '',
           expect: prompt_unix },
         { client: client_unix, send: 'message',
-          expect: ('\'' + message + '\'\n' + prompt_unix) },
+          expect: (`'${message}'\n${prompt_unix}`) },
         { client: client_unix, send: 'invoke_me(987)',
-          expect: ('\'' + 'invoked 987' + '\'\n' + prompt_unix) },
+          expect: (`'invoked 987'\n${prompt_unix}`) },
         { client: client_unix, send: 'a = 12345',
-          expect: ('12345' + '\n' + prompt_unix) },
+          expect: (`12345\n${prompt_unix}`) },
         { client: client_unix, send: '{a:1}',
-          expect: ('{ a: 1 }' + '\n' + prompt_unix) }
+          expect: (`{ a: 1 }\n${prompt_unix}`) }
       ]);
     });
 

@@ -21,7 +21,7 @@ const stream = require('stream');
 
 While it is important for all Node.js users to understand how streams work,
 the `stream` module itself is most useful for developers that are creating new
-types of stream instances. Developer's who are primarily *consuming* stream
+types of stream instances. Developers who are primarily *consuming* stream
 objects will rarely (if ever) have need to use the `stream` module directly.
 
 ## Organization of this Document
@@ -281,7 +281,7 @@ has been called, and all data has been flushed to the underlying system.
 ```js
 const writer = getWritableStreamSomehow();
 for (var i = 0; i < 100; i ++) {
-  writer.write('hello, #${i}!\n');
+  writer.write(`hello, #${i}!\n`);
 }
 writer.end('This is the end\n');
 writer.on('finish', () => {
@@ -471,7 +471,7 @@ If the data to be written can be generated or fetched on demand, it is
 recommended to encapsulate the logic into a [Readable][] and use
 [`stream.pipe()`][]. However, if calling `write()` is preferred, it is
 possible to respect backpressure and avoid memory issues using the
-the [`'drain'`][] event:
+[`'drain'`][] event:
 
 ```js
 function write (data, cb) {
@@ -547,7 +547,7 @@ that the stream will *remain* paused once those destinations drain and ask for
 more data.
 
 *Note*: If a [Readable][] is switched into flowing mode and there are no
-consumers available handle the data, that data will be lost. This can occur,
+consumers available to handle the data, that data will be lost. This can occur,
 for instance, when the `readable.resume()` method is called without a listener
 attached to the `'data'` event, or when a `'data'` event handler is removed
 from the stream.
@@ -728,7 +728,7 @@ end
 preferred over the use of the `'readable'` event.
 
 ##### readable.isPaused()
-<!--
+<!-- YAML
 added: v0.11.14
 -->
 
@@ -1007,7 +1007,7 @@ function parseHeader(stream, callback) {
         const remaining = split.join('\n\n');
         const buf = Buffer.from(remaining, 'utf8');
         stream.removeListener('error', callback);
-        // set the readable listener before unshifting
+        // remove the readable listener before unshifting
         stream.removeListener('readable', onReadable);
         if (buf.length)
           stream.unshift(buf);
@@ -1108,7 +1108,7 @@ implement streams using JavaScript's prototypal inheritance model.
 
 First, a stream developer would declare a new JavaScript class that extends one
 of the four basic stream classes (`stream.Writable`, `stream.Readable`,
-`stream.Duplex`, or `stream.Transform`), making sure the call the appropriate
+`stream.Duplex`, or `stream.Transform`), making sure they call the appropriate
 parent class constructor:
 
 ```js
@@ -1548,6 +1548,7 @@ unexpected and inconsistent behavior depending on whether the stream is
 operating in flowing or paused mode. Using the `'error'` event ensures
 consistent and predictable handling of errors.
 
+<!-- eslint-disable no-useless-return -->
 ```js
 const Readable = require('stream').Readable;
 

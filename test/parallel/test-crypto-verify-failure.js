@@ -1,20 +1,20 @@
 'use strict';
-var common = require('../common');
+const common = require('../common');
 
 if (!common.hasCrypto) {
   common.skip('missing crypto');
   return;
 }
-var crypto = require('crypto');
-var tls = require('tls');
+const crypto = require('crypto');
+const tls = require('tls');
 
 crypto.DEFAULT_ENCODING = 'buffer';
 
-var fs = require('fs');
+const fs = require('fs');
 
-var certPem = fs.readFileSync(common.fixturesDir + '/test_cert.pem', 'ascii');
+const certPem = fs.readFileSync(common.fixturesDir + '/test_cert.pem', 'ascii');
 
-var options = {
+const options = {
   key: fs.readFileSync(common.fixturesDir + '/keys/agent1-key.pem'),
   cert: fs.readFileSync(common.fixturesDir + '/keys/agent1-cert.pem')
 };
@@ -41,7 +41,7 @@ server.listen(0, common.mustCall(() => {
   }, common.mustCall(() => {
     verify();
   }))
-    .on('error', common.fail)
+    .on('error', common.mustNotCall())
     .on('close', common.mustCall(() => {
       server.close();
     })).resume();

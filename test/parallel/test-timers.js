@@ -2,7 +2,7 @@
 const common = require('../common');
 const assert = require('assert');
 
-var inputs = [
+const inputs = [
   undefined,
   null,
   true,
@@ -30,15 +30,15 @@ var inputs = [
   12345678901234  // ditto
 ];
 
-var timeouts = [];
-var intervals = [];
+const timeouts = [];
+const intervals = [];
 
 inputs.forEach(function(value, index) {
   setTimeout(function() {
     timeouts[index] = true;
   }, value);
 
-  var handle = setInterval(function() {
+  const handle = setInterval(function() {
     clearInterval(handle); // disarm timer or we'll never finish
     intervals[index] = true;
   }, value);
@@ -50,8 +50,8 @@ inputs.forEach(function(value, index) {
 setTimeout(common.mustCall(function() {
   // assert that all other timers have run
   inputs.forEach(function(value, index) {
-    assert(timeouts[index]);
-    assert(intervals[index]);
+    assert.strictEqual(true, timeouts[index]);
+    assert.strictEqual(true, intervals[index]);
   });
 }), 2);
 

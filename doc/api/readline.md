@@ -363,6 +363,9 @@ added: v0.1.98
     `crlfDelay` milliseconds, both `\r` and `\n` will be treated as separate
     end-of-line input. Default to `100` milliseconds.
     `crlfDelay` will be coerced to `[100, 2000]` range.
+  * `removeHistoryDuplicates` {boolean} If `true`, when a new input line added
+    to the history list duplicates an older one, this removes the older line
+    from the list. Defaults to `false`.
 
 The `readline.createInterface()` method creates a new `readline.Interface`
 instance.
@@ -393,8 +396,8 @@ a `'resize'` event on the `output` if or when the columns ever change
 
 ### Use of the `completer` Function
 
-When called, the `completer` function is provided the current line entered by
-the user, and is expected to return an Array with 2 entries:
+The `completer` function takes the current line entered by the user
+as an argument, and returns an Array with 2 entries:
 
 * An Array with matching entries for the completion.
 * The substring that was used for the matching.
